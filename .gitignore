@@ -1,0 +1,7 @@
+node_modules
+dist
+.turbo
+.schemend
+.env
+.env.local
+*.log
