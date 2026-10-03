@@ -10,17 +10,15 @@ const RefSchema = z
 const ConsumerExpectationSchema = z
 	.object({
 		expected: z.enum(["fixed", "flagged", "untouched"]),
-		checks: z.array(z.string()).optional(),
+		setup: z.array(z.string()).optional(),
+		// Required for every consumer: it's also the baseline gate (run once before schemaAfter
+		// is applied), so a consumer with no checks would never get that safety net.
+		checks: z
+			.array(z.string())
+			.min(1, "checks is required (used as the baseline gate)"),
 		mustNotContain: z.array(z.string()).optional(),
 		flagContains: z.string().optional(),
 	})
-	.refine(
-		(consumer) =>
-			consumer.expected !== "fixed" ||
-			(consumer.checks?.length ?? 0) > 0 ||
-			(consumer.mustNotContain?.length ?? 0) > 0,
-		{ message: "fixed consumers require checks or mustNotContain" },
-	)
 	.refine(
 		(consumer) => consumer.expected !== "flagged" || !!consumer.flagContains,
 		{
@@ -34,6 +32,8 @@ export const ScenarioSchema = z.object({
 	real: z.boolean(),
 	source: z.string(),
 	ref: RefSchema,
+	// Path (relative to the source repo root) that schemaAfter gets copied onto before checks run.
+	providerSchema: z.string(),
 	schemaBefore: z.string(),
 	schemaAfter: z.string(),
 	consumers: z.record(z.string(), ConsumerExpectationSchema),

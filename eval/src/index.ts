@@ -1,3 +1,5 @@
+export type { CheckResult } from "./checks.js";
+export { runChecks } from "./checks.js";
 export type { Verdict } from "./judge.js";
 export { judge } from "./judge.js";
 export type { RunnerRow } from "./runner.js";

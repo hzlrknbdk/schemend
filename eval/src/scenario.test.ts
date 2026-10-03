@@ -7,6 +7,7 @@ const validScenario = {
 	real: false,
 	source: "schemend-demo",
 	ref: "a1b2c3d",
+	providerSchema: "services/orders/openapi.json",
 	schemaBefore: "schema.before.json",
 	schemaAfter: "schema.after.json",
 	consumers: {
@@ -18,6 +19,7 @@ const validScenario = {
 		"services/notification": {
 			expected: "flagged",
 			flagContains: "currency",
+			checks: ["pnpm test"],
 		},
 	},
 };
@@ -27,20 +29,45 @@ describe("parseScenario", () => {
 		expect(() => parseScenario(validScenario)).not.toThrow();
 	});
 
-	it("accepts an untouched consumer with no extra fields", () => {
+	it("accepts an untouched consumer with just checks", () => {
 		expect(() =>
 			parseScenario({
 				...validScenario,
-				consumers: { "services/invoice": { expected: "untouched" } },
+				consumers: {
+					"services/invoice": {
+						expected: "untouched",
+						checks: ["mvn test"],
+					},
+				},
 			}),
 		).not.toThrow();
 	});
 
-	it("rejects a fixed consumer without checks or mustNotContain", () => {
+	it("rejects a consumer without checks", () => {
 		expect(() =>
 			parseScenario({
 				...validScenario,
-				consumers: { "apps/checkout-web": { expected: "fixed" } },
+				consumers: {
+					"apps/checkout-web": {
+						expected: "fixed",
+						mustNotContain: ["totalPrice"],
+					},
+				},
+			}),
+		).toThrow();
+	});
+
+	it("rejects a consumer whose checks array is empty", () => {
+		expect(() =>
+			parseScenario({
+				...validScenario,
+				consumers: {
+					"apps/checkout-web": {
+						expected: "fixed",
+						checks: [],
+						mustNotContain: ["totalPrice"],
+					},
+				},
 			}),
 		).toThrow();
 	});
@@ -49,9 +76,19 @@ describe("parseScenario", () => {
 		expect(() =>
 			parseScenario({
 				...validScenario,
-				consumers: { "services/notification": { expected: "flagged" } },
+				consumers: {
+					"services/notification": {
+						expected: "flagged",
+						checks: ["pnpm test"],
+					},
+				},
 			}),
 		).toThrow();
+	});
+
+	it("rejects a scenario missing providerSchema", () => {
+		const { providerSchema, ...withoutProviderSchema } = validScenario;
+		expect(() => parseScenario(withoutProviderSchema)).toThrow();
 	});
 
 	it("rejects a ref that is not a hex commit sha", () => {
@@ -67,5 +104,21 @@ describe("parseScenario", () => {
 	it("rejects a scenario missing ref", () => {
 		const { ref, ...withoutRef } = validScenario;
 		expect(() => parseScenario(withoutRef)).toThrow();
+	});
+
+	it("accepts a fixed consumer with a setup array", () => {
+		expect(() =>
+			parseScenario({
+				...validScenario,
+				consumers: {
+					"apps/checkout-web": {
+						expected: "fixed",
+						setup: ["pnpm install --frozen-lockfile", "pnpm generate:api"],
+						checks: ["pnpm typecheck"],
+						mustNotContain: ["totalPrice"],
+					},
+				},
+			}),
+		).not.toThrow();
 	});
 });

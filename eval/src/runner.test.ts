@@ -32,9 +32,15 @@ describe("discoverScenarios", () => {
 				real: false,
 				source: "schemend-demo",
 				ref: "a1b2c3d",
+				providerSchema: "schema.json",
 				schemaBefore: "schema.before.json",
 				schemaAfter: "schema.after.json",
-				consumers: { "apps/checkout-web": { expected: "untouched" } },
+				consumers: {
+					"apps/checkout-web": {
+						expected: "untouched",
+						checks: ["pnpm typecheck"],
+					},
+				},
 			}),
 		);
 
@@ -54,9 +60,15 @@ describe("discoverScenarios", () => {
 				real: false,
 				source: "schemend-demo",
 				ref: "a1b2c3d",
+				providerSchema: "schema.json",
 				schemaBefore: "schema.before.json",
 				schemaAfter: "schema.after.json",
-				consumers: { "apps/checkout-web": { expected: "untouched" } },
+				consumers: {
+					"apps/checkout-web": {
+						expected: "untouched",
+						checks: ["pnpm typecheck"],
+					},
+				},
 			}),
 		);
 
@@ -67,17 +79,22 @@ describe("discoverScenarios", () => {
 });
 
 describe("runScenario", () => {
+	// Always-passing check so these mustNotContain-focused tests aren't affected by it.
+	const NOOP_CHECK = 'node -e "process.exit(0)"';
+
 	const scenario: Scenario = {
 		id: "field-to-object",
 		description: "test",
 		real: false,
 		source: "schemend-demo",
 		ref: "a1b2c3d",
+		providerSchema: "schema.json",
 		schemaBefore: "schema.before.json",
 		schemaAfter: "schema.after.json",
 		consumers: {
 			"apps/checkout-web": {
 				expected: "fixed",
+				checks: [NOOP_CHECK],
 				mustNotContain: [".totalPrice"],
 			},
 		},
@@ -96,15 +113,7 @@ describe("runScenario", () => {
 			{ "apps/checkout-web": dir },
 			solver,
 		);
-		expect(rows).toEqual([
-			{
-				scenarioId: "field-to-object",
-				consumer: "apps/checkout-web",
-				real: false,
-				expected: "fixed",
-				result: "correct-fix",
-			},
-		]);
+		expect(rows[0]?.result).toBe("correct-fix");
 	});
 
 	it("judges wrong-fix when the forbidden string is still on disk", async () => {
@@ -204,12 +213,14 @@ describe("runScenario", () => {
 		real: false,
 		source: "schemend-demo",
 		ref: "a1b2c3d",
+		providerSchema: "schema.json",
 		schemaBefore: "schema.before.json",
 		schemaAfter: "schema.after.json",
 		consumers: {
 			"apps/checkout-web": {
 				expected: "flagged",
 				flagContains: "warehouseId",
+				checks: [NOOP_CHECK],
 			},
 		},
 	};
@@ -251,10 +262,11 @@ describe("runScenario", () => {
 		real: false,
 		source: "schemend-demo",
 		ref: "a1b2c3d",
+		providerSchema: "schema.json",
 		schemaBefore: "schema.before.json",
 		schemaAfter: "schema.after.json",
 		consumers: {
-			"services/invoice": { expected: "untouched" },
+			"services/invoice": { expected: "untouched", checks: [NOOP_CHECK] },
 		},
 	};
 
@@ -276,5 +288,57 @@ describe("runScenario", () => {
 			async () => ({ changedFiles: ["Invoice.java"], flags: [] }),
 		);
 		expect(rows[0]?.result).toBe("overreach");
+	});
+
+	const scenarioWithChecks: Scenario = {
+		id: "field-to-object",
+		description: "test",
+		real: false,
+		source: "schemend-demo",
+		ref: "a1b2c3d",
+		providerSchema: "schema.json",
+		schemaBefore: "schema.before.json",
+		schemaAfter: "schema.after.json",
+		consumers: {
+			"apps/checkout-web": {
+				expected: "fixed",
+				mustNotContain: [".totalPrice"],
+				checks: [NOOP_CHECK],
+			},
+		},
+	};
+
+	it("judges correct-fix end to end when the heuristic is clean and the check passes", async () => {
+		const dir = await tempDir();
+		await writeFile(path.join(dir, "page.ts"), "total.amount");
+		const rows = await runScenario(
+			scenarioWithChecks,
+			{ "apps/checkout-web": dir },
+			async () => ({ changedFiles: ["page.ts"], flags: [] }),
+		);
+		expect(rows[0]?.result).toBe("correct-fix");
+		expect(rows[0]?.checks).toEqual([{ name: NOOP_CHECK, status: "passed" }]);
+	});
+
+	it("judges wrong-fix end to end when the heuristic is clean but the check fails", async () => {
+		const dir = await tempDir();
+		await writeFile(path.join(dir, "page.ts"), "total.amount");
+		const failingScenario: Scenario = {
+			...scenarioWithChecks,
+			consumers: {
+				"apps/checkout-web": {
+					expected: "fixed",
+					mustNotContain: [".totalPrice"],
+					checks: ['node -e "process.exit(1)"'],
+				},
+			},
+		};
+		const rows = await runScenario(
+			failingScenario,
+			{ "apps/checkout-web": dir },
+			async () => ({ changedFiles: ["page.ts"], flags: [] }),
+		);
+		expect(rows[0]?.result).toBe("wrong-fix");
+		expect(rows[0]?.checks?.[0]?.status).toBe("failed");
 	});
 });

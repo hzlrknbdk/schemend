@@ -1,5 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import { type CheckResult, runChecks } from "./checks.js";
 import { judge, type Verdict } from "./judge.js";
 import { parseScenario, type Scenario } from "./scenario.js";
 import { noopSolver, type Solver } from "./solver.js";
@@ -10,6 +11,9 @@ export interface RunnerRow {
 	real: boolean;
 	expected: string;
 	result: Verdict;
+	checks?: CheckResult[];
+	/** Set only for result "error": the scenario crashed before judge() could run. */
+	error?: string;
 }
 
 export async function discoverScenarios(
@@ -98,12 +102,17 @@ export async function runScenario(
 			dir,
 			expectation.mustNotContain ?? [],
 		);
+		const checks =
+			expectation.checks && expectation.checks.length > 0
+				? await runChecks(dir, expectation.checks)
+				: undefined;
 		rows.push({
 			scenarioId: scenario.id,
 			consumer: consumerKey,
 			real: scenario.real,
 			expected: expectation.expected,
-			result: judge({ expectation, result, remainingMatches }),
+			result: judge({ expectation, result, remainingMatches, checks }),
+			checks,
 		});
 	}
 	return rows;

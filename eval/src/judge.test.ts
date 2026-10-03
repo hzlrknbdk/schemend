@@ -1,24 +1,39 @@
 import { describe, expect, it } from "vitest";
+import type { CheckResult } from "./checks.js";
 import { judge } from "./judge.js";
 import type { ConsumerExpectation } from "./scenario.js";
 import type { SolverResult } from "./solver.js";
 
 const noResult: SolverResult = { changedFiles: [], flags: [] };
 
+// judge() never reads expectation.checks (the command list); it only reads JudgeInput.checks
+// (the already-computed results, passed separately below). Any non-empty array satisfies the type.
+const SOME_CHECKS = ["pnpm typecheck"];
+
 function fixed(
 	overrides: Partial<ConsumerExpectation> = {},
 ): ConsumerExpectation {
-	return { expected: "fixed", mustNotContain: ["totalPrice"], ...overrides };
+	return {
+		expected: "fixed",
+		checks: SOME_CHECKS,
+		mustNotContain: ["totalPrice"],
+		...overrides,
+	};
 }
 
 function flagged(
 	overrides: Partial<ConsumerExpectation> = {},
 ): ConsumerExpectation {
-	return { expected: "flagged", flagContains: "currency", ...overrides };
+	return {
+		expected: "flagged",
+		checks: SOME_CHECKS,
+		flagContains: "currency",
+		...overrides,
+	};
 }
 
 function untouched(): ConsumerExpectation {
-	return { expected: "untouched" };
+	return { expected: "untouched", checks: SOME_CHECKS };
 }
 
 describe("judge", () => {
@@ -125,5 +140,52 @@ describe("judge", () => {
 				remainingMatches: [],
 			}),
 		).toBe("wrong-fix");
+	});
+
+	it("returns correct-fix when a fixed consumer's checks all pass", () => {
+		const result: SolverResult = { changedFiles: ["a.ts"], flags: [] };
+		const checks: CheckResult[] = [
+			{ name: "pnpm typecheck", status: "passed" },
+		];
+		expect(
+			judge({ expectation: fixed(), result, remainingMatches: [], checks }),
+		).toBe("correct-fix");
+	});
+
+	it("returns wrong-fix when a fixed consumer has no remaining matches but a check fails", () => {
+		const result: SolverResult = { changedFiles: ["a.ts"], flags: [] };
+		const checks: CheckResult[] = [
+			{ name: "pnpm typecheck", status: "failed", detail: "boom" },
+		];
+		expect(
+			judge({ expectation: fixed(), result, remainingMatches: [], checks }),
+		).toBe("wrong-fix");
+	});
+
+	it("ignores checks for a flagged consumer (informational only)", () => {
+		const result: SolverResult = {
+			changedFiles: [],
+			flags: [{ file: "a.ts", reason: "hardcoded currency suffix" }],
+		};
+		const checks: CheckResult[] = [
+			{ name: "pnpm typecheck", status: "failed", detail: "boom" },
+		];
+		expect(
+			judge({ expectation: flagged(), result, remainingMatches: [], checks }),
+		).toBe("correct-flag");
+	});
+
+	it("ignores checks for an untouched consumer (informational only)", () => {
+		const checks: CheckResult[] = [
+			{ name: "pnpm typecheck", status: "failed", detail: "boom" },
+		];
+		expect(
+			judge({
+				expectation: untouched(),
+				result: noResult,
+				remainingMatches: [],
+				checks,
+			}),
+		).toBe("correct-untouched");
 	});
 });

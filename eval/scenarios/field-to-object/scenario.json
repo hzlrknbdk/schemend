@@ -4,11 +4,17 @@
 	"real": false,
 	"source": "schemend-demo",
 	"ref": "736bfec",
+	"providerSchema": "services/orders/openapi.json",
 	"schemaBefore": "schema.before.json",
 	"schemaAfter": "schema.after.json",
 	"consumers": {
 		"apps/checkout-web": {
 			"expected": "fixed",
+			"setup": [
+				"pnpm install --frozen-lockfile",
+				"pnpm generate:api",
+				"pnpm exec next typegen"
+			],
 			"checks": ["pnpm typecheck", "pnpm test"],
 			"mustNotContain": [".totalPrice"]
 		}
