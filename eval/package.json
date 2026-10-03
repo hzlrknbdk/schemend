@@ -1,0 +1,14 @@
+{
+	"name": "@schemend/eval",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"license": "MIT",
+	"scripts": {
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run --passWithNoTests"
+	},
+	"dependencies": {
+		"zod": "^4.6.5"
+	}
+}
