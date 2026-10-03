@@ -10,7 +10,8 @@
 		"dev": "turbo run dev",
 		"typecheck": "turbo run typecheck",
 		"test": "turbo run test",
-		"lint": "biome check ."
+		"lint": "biome check .",
+		"eval": "pnpm --filter @schemend/eval eval"
 	},
 	"keywords": [],
 	"author": "",

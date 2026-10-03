@@ -1,2 +1,8 @@
+export type { Verdict } from "./judge.js";
+export { judge } from "./judge.js";
+export type { RunnerRow } from "./runner.js";
+export { discoverScenarios, runScenario } from "./runner.js";
 export type { ConsumerExpectation, Scenario } from "./scenario.js";
 export { parseScenario, ScenarioSchema } from "./scenario.js";
+export type { Solver, SolverFlag, SolverResult } from "./solver.js";
+export { noopSolver } from "./solver.js";

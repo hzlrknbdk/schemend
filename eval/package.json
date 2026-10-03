@@ -5,10 +5,14 @@
 	"type": "module",
 	"license": "MIT",
 	"scripts": {
+		"eval": "tsx src/cli.ts",
 		"typecheck": "tsc --noEmit",
 		"test": "vitest run --passWithNoTests"
 	},
 	"dependencies": {
 		"zod": "^4.6.5"
+	},
+	"devDependencies": {
+		"tsx": "^4.23.15"
 	}
 }
