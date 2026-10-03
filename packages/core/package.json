@@ -1,21 +1,21 @@
 {
-  "name": "@schemend/core",
-  "version": "0.0.0",
-  "type": "module",
-  "license": "MIT",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.mts",
-      "import": "./dist/index.mjs"
-    }
-  },
-  "files": [
-    "dist"
-  ],
-  "scripts": {
-    "build": "tsdown",
-    "dev": "tsdown --watch",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
-  }
+	"name": "@schemend/core",
+	"version": "0.0.0",
+	"type": "module",
+	"license": "MIT",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.mts",
+			"import": "./dist/index.mjs"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsdown",
+		"dev": "tsdown --watch",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run --passWithNoTests"
+	}
 }
