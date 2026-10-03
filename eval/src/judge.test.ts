@@ -59,6 +59,16 @@ describe("judge", () => {
 		).toBe("overreach");
 	});
 
+	it("returns overreach when an untouched consumer was only flagged", () => {
+		const result: SolverResult = {
+			changedFiles: [],
+			flags: [{ file: "a.ts", reason: "looks suspicious" }],
+		};
+		expect(
+			judge({ expectation: untouched(), result, remainingMatches: [] }),
+		).toBe("overreach");
+	});
+
 	it("returns correct-untouched when an untouched consumer stayed untouched", () => {
 		expect(
 			judge({
@@ -67,5 +77,53 @@ describe("judge", () => {
 				remainingMatches: [],
 			}),
 		).toBe("correct-untouched");
+	});
+
+	it("returns wrong-fix when a flagged consumer was changed, even with a matching flag", () => {
+		const result: SolverResult = {
+			changedFiles: ["a.ts"],
+			flags: [{ file: "a.ts", reason: "hardcoded currency suffix" }],
+		};
+		expect(
+			judge({ expectation: flagged(), result, remainingMatches: [] }),
+		).toBe("wrong-fix");
+	});
+
+	it("returns missed when a flagged consumer was not changed and has no matching flag", () => {
+		expect(
+			judge({ expectation: flagged(), result: noResult, remainingMatches: [] }),
+		).toBe("missed");
+	});
+
+	it("returns wrong-fix when a flagged consumer was changed with no matching flag", () => {
+		const result: SolverResult = { changedFiles: ["a.ts"], flags: [] };
+		expect(
+			judge({ expectation: flagged(), result, remainingMatches: [] }),
+		).toBe("wrong-fix");
+	});
+
+	it("returns correct-fix when a fixed+flagContains consumer was fixed and flagged", () => {
+		const result: SolverResult = {
+			changedFiles: ["a.ts"],
+			flags: [{ file: "a.ts", reason: "hardcoded currency suffix" }],
+		};
+		expect(
+			judge({
+				expectation: fixed({ flagContains: "currency" }),
+				result,
+				remainingMatches: [],
+			}),
+		).toBe("correct-fix");
+	});
+
+	it("returns wrong-fix when a fixed+flagContains consumer was fixed but not flagged", () => {
+		const result: SolverResult = { changedFiles: ["a.ts"], flags: [] };
+		expect(
+			judge({
+				expectation: fixed({ flagContains: "currency" }),
+				result,
+				remainingMatches: [],
+			}),
+		).toBe("wrong-fix");
 	});
 });

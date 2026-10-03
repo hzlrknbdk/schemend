@@ -23,20 +23,27 @@ export function judge({
 }: JudgeInput): Verdict {
 	const changed = result.changedFiles.length > 0;
 	const flagged = result.flags.length > 0;
+	const matchedFlag =
+		expectation.flagContains !== undefined &&
+		result.flags.some((flag) =>
+			flag.reason.includes(expectation.flagContains as string),
+		);
 
 	switch (expectation.expected) {
 		case "fixed": {
 			if (!changed) return "missed";
-			return remainingMatches.length > 0 ? "wrong-fix" : "correct-fix";
+			if (remainingMatches.length > 0) return "wrong-fix";
+			// flagContains on a "fixed" consumer means: fix it AND flag it (e.g. currency semantics).
+			// A clean fix with no matching flag silently passed over that second half.
+			if (expectation.flagContains !== undefined && !matchedFlag) {
+				return "wrong-fix";
+			}
+			return "correct-fix";
 		}
 		case "flagged": {
-			const matched =
-				expectation.flagContains !== undefined &&
-				result.flags.some((flag) =>
-					flag.reason.includes(expectation.flagContains as string),
-				);
-			if (matched) return "correct-flag";
-			return changed ? "wrong-fix" : "missed";
+			// "flagged" means hands off the code, no matter how confident the guess is.
+			if (changed) return "wrong-fix";
+			return matchedFlag ? "correct-flag" : "missed";
 		}
 		case "untouched": {
 			return changed || flagged ? "overreach" : "correct-untouched";

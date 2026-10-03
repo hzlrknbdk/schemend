@@ -37,19 +37,46 @@ export async function discoverScenarios(
 	return scenarios;
 }
 
+const SKIP_DIRS = new Set(["node_modules", ".next"]);
+const SKIP_FILES = new Set(["orders-api.d.ts"]);
+
+async function collectScannableFiles(dir: string): Promise<string[]> {
+	const entries = await readdir(dir, { withFileTypes: true });
+	const files: string[] = [];
+	for (const entry of entries) {
+		if (entry.isDirectory()) {
+			if (SKIP_DIRS.has(entry.name)) continue;
+			files.push(...(await collectScannableFiles(path.join(dir, entry.name))));
+			continue;
+		}
+		if (entry.isFile() && !SKIP_FILES.has(entry.name)) {
+			files.push(path.join(dir, entry.name));
+		}
+	}
+	return files;
+}
+
+function escapeRegExp(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Word boundary on the right only: `.totalPrice` must not match `.totalPriceWithTax`.
+// No attempt to exclude comments or string literals; that's checks' job, not this heuristic's.
+function containsFieldAccess(content: string, needle: string): boolean {
+	return new RegExp(`${escapeRegExp(needle)}(?![\\w$])`).test(content);
+}
+
 async function findRemainingMatches(
 	dir: string,
 	mustNotContain: string[],
 ): Promise<string[]> {
 	if (mustNotContain.length === 0) return [];
 	const found = new Set<string>();
-	const entries = await readdir(dir, { withFileTypes: true, recursive: true });
-	for (const entry of entries) {
-		if (!entry.isFile()) continue;
-		const filePath = path.join(entry.parentPath ?? dir, entry.name);
+	const files = await collectScannableFiles(dir);
+	for (const filePath of files) {
 		const content = await readFile(filePath, "utf8").catch(() => "");
 		for (const needle of mustNotContain) {
-			if (content.includes(needle)) found.add(needle);
+			if (containsFieldAccess(content, needle)) found.add(needle);
 		}
 	}
 	return [...found];
