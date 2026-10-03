@@ -1,0 +1,176 @@
+{
+	"openapi": "3.1.0",
+	"info": {
+		"title": "Orders Service",
+		"version": "1.0.0"
+	},
+	"paths": {
+		"/orders": {
+			"get": {
+				"summary": "List Orders",
+				"operationId": "listOrders",
+				"responses": {
+					"200": {
+						"description": "Successful Response",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/Order"
+									},
+									"type": "array",
+									"title": "Response Listorders"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/orders/{order_id}": {
+			"get": {
+				"summary": "Get Order",
+				"operationId": "getOrder",
+				"parameters": [
+					{
+						"name": "order_id",
+						"in": "path",
+						"required": true,
+						"schema": {
+							"type": "string",
+							"title": "Order Id"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Successful Response",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Order"
+								}
+							}
+						}
+					},
+					"422": {
+						"description": "Validation Error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPValidationError"
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	},
+	"components": {
+		"schemas": {
+			"HTTPValidationError": {
+				"properties": {
+					"detail": {
+						"items": {
+							"$ref": "#/components/schemas/ValidationError"
+						},
+						"type": "array",
+						"title": "Detail"
+					}
+				},
+				"type": "object",
+				"title": "HTTPValidationError"
+			},
+			"Order": {
+				"properties": {
+					"id": {
+						"type": "string",
+						"title": "Id"
+					},
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/OrderItem"
+						},
+						"type": "array",
+						"title": "Items"
+					},
+					"totalPrice": {
+						"type": "number",
+						"title": "Totalprice"
+					},
+					"status": {
+						"$ref": "#/components/schemas/OrderStatus"
+					}
+				},
+				"type": "object",
+				"required": ["id", "items", "totalPrice", "status"],
+				"title": "Order"
+			},
+			"OrderItem": {
+				"properties": {
+					"sku": {
+						"type": "string",
+						"title": "Sku"
+					},
+					"name": {
+						"type": "string",
+						"title": "Name"
+					},
+					"quantity": {
+						"type": "integer",
+						"title": "Quantity"
+					},
+					"price": {
+						"type": "number",
+						"title": "Price"
+					}
+				},
+				"type": "object",
+				"required": ["sku", "name", "quantity", "price"],
+				"title": "OrderItem"
+			},
+			"OrderStatus": {
+				"type": "string",
+				"enum": ["pending", "paid", "shipped"],
+				"title": "OrderStatus"
+			},
+			"ValidationError": {
+				"properties": {
+					"loc": {
+						"items": {
+							"anyOf": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "integer"
+								}
+							]
+						},
+						"type": "array",
+						"title": "Location"
+					},
+					"msg": {
+						"type": "string",
+						"title": "Message"
+					},
+					"type": {
+						"type": "string",
+						"title": "Error Type"
+					},
+					"input": {
+						"title": "Input"
+					},
+					"ctx": {
+						"type": "object",
+						"title": "Context"
+					}
+				},
+				"type": "object",
+				"required": ["loc", "msg", "type"],
+				"title": "ValidationError"
+			}
+		}
+	}
+}

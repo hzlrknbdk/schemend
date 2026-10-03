@@ -1,0 +1,16 @@
+{
+	"id": "field-to-object",
+	"description": "orders: totalPrice replaced by total { amount, currency }",
+	"real": false,
+	"source": "schemend-demo",
+	"ref": "736bfec",
+	"schemaBefore": "schema.before.json",
+	"schemaAfter": "schema.after.json",
+	"consumers": {
+		"apps/checkout-web": {
+			"expected": "fixed",
+			"checks": ["pnpm typecheck", "pnpm test"],
+			"mustNotContain": [".totalPrice"]
+		}
+	}
+}

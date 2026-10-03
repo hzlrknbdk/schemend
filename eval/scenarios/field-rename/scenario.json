@@ -1,0 +1,16 @@
+{
+	"id": "field-rename",
+	"description": "orders: OrderItem.unitPrice renamed to price",
+	"real": false,
+	"source": "schemend-demo",
+	"ref": "736bfec",
+	"schemaBefore": "schema.before.json",
+	"schemaAfter": "schema.after.json",
+	"consumers": {
+		"apps/checkout-web": {
+			"expected": "fixed",
+			"checks": ["pnpm typecheck", "pnpm test"],
+			"mustNotContain": [".unitPrice"]
+		}
+	}
+}

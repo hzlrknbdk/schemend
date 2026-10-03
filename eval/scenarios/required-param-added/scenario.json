@@ -1,0 +1,15 @@
+{
+	"id": "required-param-added",
+	"description": "orders: GET /orders/{order_id} gains a required query parameter (warehouseId)",
+	"real": false,
+	"source": "schemend-demo",
+	"ref": "736bfec",
+	"schemaBefore": "schema.before.json",
+	"schemaAfter": "schema.after.json",
+	"consumers": {
+		"apps/checkout-web": {
+			"expected": "flagged",
+			"flagContains": "warehouseId"
+		}
+	}
+}
