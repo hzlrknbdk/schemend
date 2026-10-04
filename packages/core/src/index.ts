@@ -1,5 +1,7 @@
 export const VERSION = "0.0.0";
 
+export * from "./agent.js";
+export * from "./agent-tools.js";
 export * from "./budget.js";
 export * from "./config.js";
 export * from "./context.js";
