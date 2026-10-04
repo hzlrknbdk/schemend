@@ -1,5 +1,6 @@
 export const VERSION = "0.0.0";
 
+export * from "./budget.js";
 export * from "./context.js";
 export * from "./language-adapter.js";
 export * from "./platform-adapter.js";
