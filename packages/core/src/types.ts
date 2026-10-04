@@ -14,6 +14,8 @@ export interface ApiEntry {
 	kind: "internal" | "external";
 	source: ApiSource;
 	usedIn: string[];
+	/** Why discovery flagged this API (script name, env var + file); shown during `schemend init`. */
+	evidence?: string[];
 }
 
 /** oasdiff's own check id and raw numeric level (ERR=3, WARN=2, INFO=1, NONE=0), kept alongside our normalized id/severity. */
