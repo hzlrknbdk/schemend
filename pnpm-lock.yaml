@@ -61,6 +61,12 @@ importers:
         specifier: ^4.6.5
         version: 4.6.5
 
+  packages/lang-typescript:
+    dependencies:
+      '@schemend/core':
+        specifier: workspace:*
+        version: link:../core
+
 packages:
 
   '@biomejs/biome@2.5.14':
