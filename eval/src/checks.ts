@@ -1,10 +1,7 @@
+import type { CheckResult } from "@schemend/core";
 import { runCommand } from "./exec.js";
 
-export interface CheckResult {
-	name: string;
-	status: "passed" | "failed";
-	detail?: string;
-}
+export type { CheckResult } from "@schemend/core";
 
 export async function runChecks(
 	dir: string,
