@@ -16,12 +16,20 @@ export interface ApiEntry {
 	usedIn: string[];
 }
 
+/** oasdiff's own check id and raw numeric level (ERR=3, WARN=2, INFO=1, NONE=0), kept alongside our normalized id/severity. */
+export interface OasdiffSource {
+	tool: "oasdiff";
+	id: string;
+	level: number;
+}
+
 /** One schema difference between old and new API versions; produced by the oasdiff step (SPEC §2 step 2). */
 export interface ApiChange {
 	id: string;
 	severity: "breaking" | "non-breaking";
 	summary: string;
 	target: string;
+	source: OasdiffSource;
 }
 
 /** A spot in consumer code touched by an ApiChange; produced by a LanguageAdapter's findAffected(). */
