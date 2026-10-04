@@ -17,5 +17,9 @@
 		"dev": "tsdown --watch",
 		"typecheck": "tsc --noEmit",
 		"test": "vitest run --passWithNoTests"
+	},
+	"dependencies": {
+		"jiti": "^2.7.0",
+		"zod": "^4.6.5"
 	}
 }
