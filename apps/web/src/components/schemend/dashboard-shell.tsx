@@ -1,0 +1,183 @@
+import { Link, useRouterState } from "@tanstack/react-router";
+import {
+  Activity,
+  ArrowLeft,
+  Boxes,
+  Cable,
+  GitPullRequest,
+  History,
+  LayoutDashboard,
+  Settings,
+  CircleHelp,
+  Github,
+} from "lucide-react";
+import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
+
+const navigation = [
+  { label: "Overview", to: "/demo", icon: LayoutDashboard },
+  { label: "API inventory", to: "/demo/apis", icon: Boxes },
+  { label: "Change impact", to: "/demo/impact", icon: Activity },
+  { label: "Migration detail", to: "/demo/migration", icon: GitPullRequest },
+  { label: "Runs history", to: "/demo/runs", icon: History },
+  { label: "Settings", to: "/demo/settings", icon: Settings },
+] as const;
+
+export function DashboardShell({ children }: { children: ReactNode }) {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  return (
+    <div className="min-h-screen min-w-[768px] bg-background text-foreground">
+      <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col bg-sidebar text-sidebar-foreground">
+        <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-5">
+          <div className="flex size-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
+            <Cable className="size-4" />
+          </div>
+          <span className="text-lg font-semibold tracking-normal">Schemend</span>
+          <span className="ml-auto rounded border border-sidebar-border px-1.5 py-0.5 font-mono text-[10px] text-sidebar-muted">
+            OSS
+          </span>
+        </div>
+        <nav className="flex-1 space-y-1 p-3" aria-label="Main navigation">
+          <p className="px-3 pb-2 pt-3 text-[10px] font-semibold uppercase text-sidebar-muted">
+            Workspace
+          </p>
+          {navigation.map((item) => {
+            const active =
+              item.to === "/demo" ? pathname === "/demo" : pathname.startsWith(item.to);
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={cn(
+                  "flex h-10 items-center gap-3 rounded-md px-3 text-sm text-sidebar-muted transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  active && "bg-sidebar-accent text-sidebar-accent-foreground",
+                )}
+              >
+                <item.icon className={cn("size-4", active && "text-sidebar-primary")} />
+                <span>{item.label}</span>
+                {item.label === "Change impact" && (
+                  <span className="ml-auto rounded-full bg-warning px-1.5 py-0.5 text-[10px] font-semibold text-warning-foreground">
+                    1
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+        </nav>
+        <div className="border-t border-sidebar-border p-4">
+          <Link
+            to="/"
+            className="mb-4 flex items-center gap-2 text-xs text-sidebar-muted transition-colors hover:text-sidebar-foreground"
+          >
+            <ArrowLeft className="size-3.5" />
+            Back to schemend.dev
+          </Link>
+          <div className="mb-3 flex items-center gap-2 text-xs text-sidebar-muted">
+            <span className="size-2 rounded-full bg-success" />
+            Agent operational
+          </div>
+          <div className="flex items-center justify-between">
+            <a
+              href="https://github.com"
+              target="_blank"
+              rel="noreferrer"
+              className="text-sidebar-muted hover:text-sidebar-foreground"
+              aria-label="GitHub"
+            >
+              <Github className="size-4" />
+            </a>
+            <button className="text-sidebar-muted hover:text-sidebar-foreground" aria-label="Help">
+              <CircleHelp className="size-4" />
+            </button>
+            <span className="font-mono text-[10px] text-sidebar-muted">v0.8.4</span>
+          </div>
+        </div>
+      </aside>
+      <main className="ml-60 min-h-screen">
+        <div className="mx-auto max-w-[1440px] p-8 lg:p-10">{children}</div>
+      </main>
+    </div>
+  );
+}
+
+export function PageHeader({
+  eyebrow,
+  title,
+  description,
+  action,
+}: {
+  eyebrow?: string;
+  title: string;
+  description: string;
+  action?: ReactNode;
+}) {
+  return (
+    <header className="mb-8 flex items-start justify-between gap-6">
+      <div>
+        {eyebrow && (
+          <p className="mb-2 font-mono text-xs font-medium uppercase text-primary">{eyebrow}</p>
+        )}
+        <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
+        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{description}</p>
+      </div>
+      {action}
+    </header>
+  );
+}
+
+export function StatusBadge({ status }: { status: string }) {
+  const warning = status.includes("review") || status === "Update available";
+  const success =
+    status === "Merged" ||
+    status === "Up to date" ||
+    status.includes("opened") ||
+    status === "Passed";
+  const active = status === "Analyzing";
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium",
+        warning && "border-warning/25 bg-warning-soft text-warning",
+        success && "border-success/25 bg-success-soft text-success",
+        active && "border-primary/20 bg-primary-soft text-primary",
+      )}
+    >
+      <span
+        className={cn(
+          "size-1.5 rounded-full",
+          warning && "bg-warning",
+          success && "bg-success",
+          active && "bg-primary animate-pulse",
+        )}
+      />
+      {status}
+    </span>
+  );
+}
+
+export function Section({
+  title,
+  note,
+  action,
+  children,
+  className,
+}: {
+  title: string;
+  note?: string;
+  action?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={cn("rounded-lg border border-border bg-card", className)}>
+      <div className="flex min-h-14 items-center justify-between border-b border-border px-5">
+        <div>
+          <h2 className="text-sm font-semibold">{title}</h2>
+          {note && <p className="mt-0.5 text-xs text-muted-foreground">{note}</p>}
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
