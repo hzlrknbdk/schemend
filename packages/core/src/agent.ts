@@ -115,6 +115,7 @@ export async function runFixAgent(
 			mcpServers: { [TOOL_SERVER_NAME]: server },
 			strictMcpConfig: true,
 			permissionMode: "bypassPermissions",
+			settingSources: [],
 			maxBudgetUsd: budget.remaining,
 			systemPrompt:
 				"You are schemend's fix agent. You only have four tools: read_file, edit_file, " +
