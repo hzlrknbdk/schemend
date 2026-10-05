@@ -58,8 +58,8 @@ export const Route = createFileRoute("/")({
 	component: LandingPage,
 });
 
-const githubUrl = "https://github.com";
-const readmeUrl = "https://github.com#readme";
+const githubUrl = "https://github.com/hzlrknbdk/schemend";
+const readmeUrl = "https://github.com/hzlrknbdk/schemend#readme";
 
 function CopyCommand({ command }: { command: string }) {
 	const [copied, setCopied] = useState(false);
@@ -566,14 +566,7 @@ function LandingPage() {
 				<div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-8 text-xs sm:flex-row sm:items-center sm:justify-between sm:px-8">
 					<p>
 						Built by{" "}
-						<a
-							href="https://www.linkedin.com"
-							target="_blank"
-							rel="noreferrer"
-							className="text-sidebar-foreground hover:underline"
-						>
-							[YOUR NAME]
-						</a>
+						<span className="text-sidebar-foreground">Hazal Ruken Budak</span>
 					</p>
 					<div className="flex gap-5">
 						<span>MIT License</span>
