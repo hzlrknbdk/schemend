@@ -1,22 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-	ArrowRight,
-	Boxes,
-	CheckCircle2,
-	CircleAlert,
-	FileCode2,
-	Gauge,
-	GitBranch,
-	GitPullRequest,
-	Search,
-} from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import {
 	DashboardShell,
 	PageHeader,
 	Section,
 	StatusBadge,
 } from "@/components/schemend/dashboard-shell";
-import { changes } from "@/lib/schemend-data";
+import { activity, stats } from "@/data/overview";
+import { changes } from "@/data/schemend-data";
 
 export const Route = createFileRoute("/demo/")({
 	head: () => ({
@@ -37,65 +28,6 @@ export const Route = createFileRoute("/demo/")({
 	}),
 	component: Overview,
 });
-
-const stats = [
-	{
-		label: "Tracked APIs",
-		value: "12",
-		detail: "3 internal · 9 external",
-		icon: Boxes,
-	},
-	{
-		label: "Pending changes",
-		value: "3",
-		detail: "21 breaking changes",
-		icon: GitBranch,
-	},
-	{
-		label: "PRs awaiting review",
-		value: "7",
-		detail: "Across 5 services",
-		icon: GitPullRequest,
-	},
-	{
-		label: "Auto-fix rate",
-		value: "91.4%",
-		detail: "Last 30 days",
-		icon: Gauge,
-	},
-];
-const activity = [
-	{
-		icon: GitPullRequest,
-		title: "Opened PR #184 in checkout-web",
-		meta: "orders-service · 8 min ago",
-		tone: "success",
-	},
-	{
-		icon: CircleAlert,
-		title: "Flagged ambiguous currency mapping",
-		meta: "notification-service · 11 min ago",
-		tone: "warning",
-	},
-	{
-		icon: CheckCircle2,
-		title: "48 tests passed",
-		meta: "invoice-service · 12 min ago",
-		tone: "success",
-	},
-	{
-		icon: FileCode2,
-		title: "Updated 4 Java source files",
-		meta: "invoice-service · 14 min ago",
-		tone: "primary",
-	},
-	{
-		icon: Search,
-		title: "Found 4 affected consumer services",
-		meta: "orders-service · 18 min ago",
-		tone: "primary",
-	},
-];
 
 function Overview() {
 	return (

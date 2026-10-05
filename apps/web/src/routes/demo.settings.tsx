@@ -1,14 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-	Bell,
-	Box,
-	Check,
-	Code2,
-	Github,
-	Gitlab,
-	type LucideIcon,
-	WalletCards,
-} from "lucide-react";
+import { Bell, Check, WalletCards } from "lucide-react";
 import { useState } from "react";
 import {
 	DashboardShell,
@@ -25,6 +16,11 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import {
+	languageAdapters,
+	notificationSettings,
+	platforms,
+} from "@/data/settings";
 export const Route = createFileRoute("/demo/settings")({
 	head: () => ({
 		meta: [
@@ -46,22 +42,6 @@ export const Route = createFileRoute("/demo/settings")({
 	}),
 	component: SettingsPage,
 });
-const platforms: Array<{
-	name: string;
-	note: string;
-	icon: LucideIcon;
-	connected: boolean;
-}> = [
-	{ name: "GitHub", note: "14 repositories", icon: Github, connected: true },
-	{ name: "GitLab", note: "Not connected", icon: Gitlab, connected: false },
-	{ name: "Bitbucket", note: "Not connected", icon: Box, connected: false },
-	{
-		name: "Azure DevOps",
-		note: "Not connected",
-		icon: Code2,
-		connected: false,
-	},
-];
 function SettingsPage() {
 	const [saved, setSaved] = useState(false);
 	return (
@@ -103,14 +83,10 @@ function SettingsPage() {
 				</Section>
 				<Section title="Language adapters" note="Analysis and codemod support">
 					<div className="divide-y divide-border">
-						{[
-							["TypeScript", "TypeScript 5.x · Node.js 20+"],
-							["Java", "Java 17–23 · Maven and Gradle"],
-							["C#", ".NET 8 and 9 · NuGet"],
-						].map(([name, note]) => (
+						{languageAdapters.map(({ name, abbreviation, note }) => (
 							<div key={name} className="flex items-center px-5 py-4">
 								<span className="mr-3 flex size-9 items-center justify-center rounded-md bg-primary-soft font-mono text-xs text-primary">
-									{name === "TypeScript" ? "TS" : name === "Java" ? "JV" : "C#"}
+									{abbreviation}
 								</span>
 								<div>
 									<p className="text-sm font-medium">{name}</p>
@@ -184,29 +160,16 @@ function SettingsPage() {
 					note="Choose which agent events reach your team"
 				>
 					<div className="divide-y divide-border">
-						{[
-							[
-								"Pull request opened",
-								"When schemend creates a migration PR",
-								true,
-							],
-							[
-								"Manual review required",
-								"When confidence falls below the threshold",
-								true,
-							],
-							["Run failed", "When build or tests do not pass", true],
-							["Run completed", "For every successful migration", false],
-						].map(([name, note, on]) => (
-							<div key={String(name)} className="flex items-center px-5 py-4">
+						{notificationSettings.map(({ name, note, enabledByDefault }) => (
+							<div key={name} className="flex items-center px-5 py-4">
 								<Bell className="mr-3 size-4 text-muted-foreground" />
 								<div>
-									<p className="text-xs font-medium">{String(name)}</p>
+									<p className="text-xs font-medium">{name}</p>
 									<p className="mt-0.5 text-[11px] text-muted-foreground">
-										{String(note)}
+										{note}
 									</p>
 								</div>
-								<Switch className="ml-auto" defaultChecked={Boolean(on)} />
+								<Switch className="ml-auto" defaultChecked={enabledByDefault} />
 							</div>
 						))}
 					</div>
