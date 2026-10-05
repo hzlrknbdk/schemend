@@ -75,31 +75,6 @@ function ctx() {
 }
 
 describe("runFixAgent", () => {
-	it("skips the agent entirely when the baseline build fails", async () => {
-		const adapter = {
-			build: async (): Promise<CheckResult> => ({
-				name: "typecheck",
-				status: "failed" as const,
-				detail: "boom",
-			}),
-			test: passingAdapter.test,
-		};
-
-		const result = await runFixAgent({
-			ctx: ctx(),
-			adapter,
-			affected,
-			changes: [change],
-			budget: new Budget(1),
-			model: "claude-sonnet-5",
-		});
-
-		expect(mockedQuery).not.toHaveBeenCalled();
-		expect(result.confidence).toBe("unverified");
-		expect(result.costUsd).toBe(0);
-		expect(result.review[0]?.reason).toContain("baseline");
-	});
-
 	it("skips the agent when the budget is already exhausted", async () => {
 		const budget = new Budget(1);
 		budget.record(1);
@@ -168,17 +143,12 @@ describe("runFixAgent", () => {
 
 	it("reports verified-by-build when tests fail but the build still passes", async () => {
 		mockedQuery.mockImplementation(() => fakeQuery([resultMessage()]));
-		let testCalls = 0;
 		const adapter = {
 			build: passingAdapter.build,
-			test: async (): Promise<CheckResult> => {
-				testCalls += 1;
-				// Baseline (1st call) must pass for the agent to run; the 2nd call is the
-				// post-fix verification this test exercises failing.
-				return testCalls === 1
-					? { name: "test", status: "passed" as const }
-					: { name: "test", status: "failed" as const };
-			},
+			test: async (): Promise<CheckResult> => ({
+				name: "test",
+				status: "failed" as const,
+			}),
 		};
 
 		const result = await runFixAgent({
@@ -195,22 +165,15 @@ describe("runFixAgent", () => {
 
 	it("reports unverified when both build and tests fail after the fix", async () => {
 		mockedQuery.mockImplementation(() => fakeQuery([resultMessage()]));
-		let buildCalls = 0;
-		let testCalls = 0;
-		// Both pass on the baseline (1st call) and fail on the post-fix verification (2nd call).
 		const adapter = {
-			build: async (): Promise<CheckResult> => {
-				buildCalls += 1;
-				return buildCalls === 1
-					? { name: "typecheck", status: "passed" as const }
-					: { name: "typecheck", status: "failed" as const };
-			},
-			test: async (): Promise<CheckResult> => {
-				testCalls += 1;
-				return testCalls === 1
-					? { name: "test", status: "passed" as const }
-					: { name: "test", status: "failed" as const };
-			},
+			build: async (): Promise<CheckResult> => ({
+				name: "typecheck",
+				status: "failed" as const,
+			}),
+			test: async (): Promise<CheckResult> => ({
+				name: "test",
+				status: "failed" as const,
+			}),
 		};
 
 		const result = await runFixAgent({

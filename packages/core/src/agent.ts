@@ -63,24 +63,13 @@ function buildPrompt(
 	].join("\n");
 }
 
-function skip(
-	checks: CheckResult[],
-	reason: string,
-	root: string,
-): FixAgentOutput {
-	return {
-		changedFiles: [],
-		checks,
-		confidence: "unverified",
-		costUsd: 0,
-		review: [{ file: root, reason }],
-	};
-}
-
 /**
- * Fix + Verify (SPEC §2 steps 5-6). Runs the baseline first (step 3); on failure, skips the agent
- * entirely and reports impact only. Otherwise runs a bash-free Claude Agent SDK loop restricted
- * to read_file/edit_file/run_build/run_tests (SPEC §6), bounded by the remaining budget via the
+ * Fix + Verify (SPEC §2 steps 5-6). Assumes the caller already ran the real pre-change baseline
+ * (step 3) and the client regeneration + impact scan (step 4): by the time this runs, the
+ * generated client already reflects the NEW schema, so re-checking build/test here would just
+ * re-observe the breakage `affected` already describes, not a pre-existing problem - that check
+ * belongs before regeneration, not here. Runs a bash-free Claude Agent SDK loop restricted to
+ * read_file/edit_file/run_build/run_tests (SPEC §6), bounded by the remaining budget via the
  * SDK's own `maxBudgetUsd`. "Retry within budget" (SPEC step 6) isn't separate code here: run_build
  * and run_tests are tools the agent itself calls, so it already iterates on failures on its own.
  * Confidence and the final checks come from our own build/test run after the loop ends, not the
@@ -91,25 +80,22 @@ export async function runFixAgent(
 ): Promise<FixAgentOutput> {
 	const { ctx, adapter, affected, changes, budget, model } = input;
 
-	const baselineBuild = await adapter.build(ctx);
-	const baselineTest = await adapter.test(ctx);
-	if (baselineBuild.status !== "passed" || baselineTest.status !== "passed") {
-		return skip(
-			[baselineBuild, baselineTest],
-			"baseline build/test failed before any fix was attempted",
-			ctx.root,
-		);
-	}
-
 	try {
 		budget.assertAvailable();
 	} catch (error) {
 		if (error instanceof BudgetExceededError) {
-			return skip(
-				[baselineBuild, baselineTest],
-				"budget exhausted before this service could be fixed",
-				ctx.root,
-			);
+			return {
+				changedFiles: [],
+				checks: [],
+				confidence: "unverified",
+				costUsd: 0,
+				review: [
+					{
+						file: ctx.root,
+						reason: "budget exhausted before this service could be fixed",
+					},
+				],
+			};
 		}
 		throw error;
 	}
