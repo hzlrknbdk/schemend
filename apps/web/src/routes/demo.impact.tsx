@@ -12,7 +12,13 @@ import {
 	PageHeader,
 	Section,
 } from "@/components/schemend/dashboard-shell";
-import { services } from "@/data/schemend-data";
+import { type ServiceTone, services } from "@/data/schemend-data";
+import { cn } from "@/lib/utils";
+
+const serviceToneClasses: Record<ServiceTone, string> = {
+	success: "text-success",
+	warning: "text-warning",
+};
 
 export const Route = createFileRoute("/demo/impact")({
 	head: () => ({
@@ -125,7 +131,10 @@ function Impact() {
 											{service.files} files
 										</span>
 										<span
-											className={`flex items-center gap-1.5 text-${service.tone}`}
+											className={cn(
+												"flex items-center gap-1.5",
+												serviceToneClasses[service.tone],
+											)}
 										>
 											<GitPullRequest className="size-3.5" />
 											{service.status}

@@ -6,8 +6,15 @@ import {
 	Section,
 	StatusBadge,
 } from "@/components/schemend/dashboard-shell";
-import { activity, stats } from "@/data/overview";
+import { type ActivityTone, activity, stats } from "@/data/overview";
 import { changes } from "@/data/schemend-data";
+import { cn } from "@/lib/utils";
+
+const activityToneClasses: Record<ActivityTone, string> = {
+	success: "bg-success-soft text-success",
+	warning: "bg-warning-soft text-warning",
+	primary: "bg-primary-soft text-primary",
+};
 
 export const Route = createFileRoute("/demo/")({
 	head: () => ({
@@ -115,7 +122,10 @@ function Overview() {
 									<span className="absolute left-[15px] top-10 h-7 w-px bg-border" />
 								)}
 								<span
-									className={`z-10 flex size-8 shrink-0 items-center justify-center rounded-full bg-${item.tone}-soft text-${item.tone}`}
+									className={cn(
+										"z-10 flex size-8 shrink-0 items-center justify-center rounded-full",
+										activityToneClasses[item.tone],
+									)}
 								>
 									<item.icon className="size-3.5" />
 								</span>

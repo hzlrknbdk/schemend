@@ -142,7 +142,17 @@ export const apis = [
 	},
 ];
 
-export const services = [
+export type ServiceTone = "success" | "warning";
+
+export const services: {
+	name: string;
+	language: string;
+	framework: string;
+	files: number;
+	status: string;
+	tone: ServiceTone;
+	confidence: string;
+}[] = [
 	{
 		name: "checkout-web",
 		language: "TypeScript",
