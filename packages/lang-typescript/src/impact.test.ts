@@ -1,9 +1,12 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { ApiChange, ApiEntry } from "@schemend/core";
+import { parseOasdiffChangelog } from "@schemend/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { findAffected } from "./impact.js";
+
+const FIXTURES_DIR = path.join(import.meta.dirname, "fixtures");
 
 let root: string;
 
@@ -23,7 +26,8 @@ const api: ApiEntry = {
 const totalPriceRemoved: ApiChange = {
 	id: "response-property-removed:GET:/orders#0",
 	severity: "breaking",
-	summary: "'totalPrice' was removed from the response",
+	summary:
+		"removed the required property `items/totalPrice` from the response with the `200` status",
 	target: "GET /orders",
 	source: { tool: "oasdiff", id: "response-property-removed", level: 2 },
 };
@@ -31,7 +35,7 @@ const totalPriceRemoved: ApiChange = {
 const warehouseIdRequired: ApiChange = {
 	id: "request-parameter-added:POST:/orders#1",
 	severity: "breaking",
-	summary: "'warehouseId' was added to the request as required",
+	summary: "added the required parameter `warehouseId` to the request",
 	target: "POST /orders",
 	source: { tool: "oasdiff", id: "request-parameter-added", level: 3 },
 };
@@ -222,5 +226,48 @@ describe("findAffected", () => {
 		expect(files).toEqual(
 			["src/components/OrderSummary.tsx", "src/lib/orders-client.ts"].sort(),
 		);
+	});
+
+	// Regression test for a real bug: oasdiff quotes field names with backticks
+	// (` `totalPrice` `), never the single quotes every other test fixture above hand-writes. The
+	// old matching code only ever matched single quotes, so it silently found zero affected
+	// locations against every real oasdiff response. This fixture is the actual, unedited output
+	// of `oasdiff changelog -f json` for services/orders' totalPrice -> total{amount,currency}
+	// change (SPEC §8's main demo change), captured by running the real CLI end to end.
+	it("finds the real affected locations from a real, saved oasdiff response", async () => {
+		const rawChangelog = await readFile(
+			path.join(FIXTURES_DIR, "oasdiff-field-to-object.json"),
+			"utf-8",
+		);
+		const changes = parseOasdiffChangelog(rawChangelog);
+
+		await writeTsconfig();
+		await write(
+			"src/lib/orders-api.ts",
+			[
+				"export interface Order {",
+				"  total: { amount: number; currency: string };",
+				"}",
+				"",
+			].join("\n"),
+		);
+		await write(
+			"src/lib/shipping.ts",
+			[
+				'import type { Order } from "./orders-api.js";',
+				"",
+				"const FREE_SHIPPING_THRESHOLD = 50;",
+				"",
+				"export function qualifiesForFreeShipping(order: Order): boolean {",
+				"  return order.totalPrice >= FREE_SHIPPING_THRESHOLD;",
+				"}",
+				"",
+			].join("\n"),
+		);
+
+		const locations = await findAffected(dummyCtx(), api, changes);
+
+		expect(locations).toHaveLength(1);
+		expect(locations[0]).toMatchObject({ file: "src/lib/shipping.ts" });
 	});
 });

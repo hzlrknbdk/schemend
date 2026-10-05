@@ -7,20 +7,29 @@ import type {
 } from "@schemend/core";
 import { Project } from "ts-morph";
 
-/** oasdiff quotes the affected field/parameter name in its summary, e.g. "'totalPrice' was removed from the response". */
+/**
+ * oasdiff quotes the affected field/parameter name in backticks, e.g. "removed the required
+ * property `items/totalPrice` from the response". Nested fields are given as a path
+ * (`items/totalPrice`); only the last segment is the actual property name tsc diagnostics use.
+ */
 function identifiersIn(change: ApiChange): string[] {
-	return [...change.summary.matchAll(/'([^']+)'/g)]
-		.map((match) => match[1])
+	return [...change.summary.matchAll(/`([^`]+)`/g)]
+		.map((match) => match[1]?.split("/").pop())
 		.filter((id): id is string => Boolean(id));
 }
 
-/** The first change whose quoted identifier appears in the diagnostic text; undefined if none do. */
+/**
+ * The first change whose identifier appears in the diagnostic text the same way tsc itself quotes
+ * identifiers (single quotes, e.g. "Property 'totalPrice' does not exist on type ..."). Matching
+ * the quotes too (not just the bare substring) avoids a short identifier like `total` spuriously
+ * matching inside an unrelated one like `totalPrice`.
+ */
 function matchChange(
 	text: string,
 	changes: ApiChange[],
 ): ApiChange | undefined {
 	return changes.find((change) =>
-		identifiersIn(change).some((id) => text.includes(id)),
+		identifiersIn(change).some((id) => text.includes(`'${id}'`)),
 	);
 }
 

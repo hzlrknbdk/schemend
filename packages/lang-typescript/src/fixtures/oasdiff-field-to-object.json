@@ -1,0 +1,49 @@
+[
+	{
+		"id": "response-required-property-removed",
+		"text": "removed the required property `items/totalPrice` from the response with the `200` status",
+		"level": 3,
+		"operation": "GET",
+		"operationId": "listOrders",
+		"path": "/orders",
+		"section": "paths",
+		"fingerprint": "12bd951cd552"
+	},
+	{
+		"id": "response-required-property-removed",
+		"text": "removed the required property `totalPrice` from the response with the `200` status",
+		"level": 3,
+		"operation": "GET",
+		"operationId": "getOrder",
+		"path": "/orders/{order_id}",
+		"section": "paths",
+		"fingerprint": "4bf49fd25334"
+	},
+	{
+		"id": "api-version-not-bumped",
+		"text": "a breaking change was detected but the version is still `1.0.0`",
+		"level": 1,
+		"section": "info",
+		"fingerprint": "d3f96cd643c1"
+	},
+	{
+		"id": "response-required-property-added",
+		"text": "added the required property `items/total` to the response with the `200` status",
+		"level": 1,
+		"operation": "GET",
+		"operationId": "listOrders",
+		"path": "/orders",
+		"section": "paths",
+		"fingerprint": "4335297f035f"
+	},
+	{
+		"id": "response-required-property-added",
+		"text": "added the required property `total` to the response with the `200` status",
+		"level": 1,
+		"operation": "GET",
+		"operationId": "getOrder",
+		"path": "/orders/{order_id}",
+		"section": "paths",
+		"fingerprint": "465b1ad50f23"
+	}
+]

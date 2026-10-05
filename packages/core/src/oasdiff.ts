@@ -64,6 +64,16 @@ function toApiChange(change: OasdiffChange, index: number): ApiChange {
 }
 
 /**
+ * Parses `oasdiff changelog -f json`'s raw output into ApiChange[]. Exported (not just used
+ * inside diffSchemas) so other packages' tests can replay a real, saved oasdiff response without
+ * needing Docker - see packages/lang-typescript/src/fixtures.
+ */
+export function parseOasdiffChangelog(json: string): ApiChange[] {
+	const changes: OasdiffChange[] = JSON.parse(json);
+	return changes.map(toApiChange);
+}
+
+/**
  * Diffs two OpenAPI schema files with oasdiff's Docker image (SPEC §2 step 2). Copies both files
  * into a throwaway temp directory as old.json/new.json before mounting it read-only into the
  * container, so the container only ever sees the two schemas, never their surrounding directory.
@@ -92,8 +102,7 @@ export async function diffSchemas(
 			);
 		}
 
-		const changes: OasdiffChange[] = JSON.parse(result.stdout);
-		return changes.map(toApiChange);
+		return parseOasdiffChangelog(result.stdout);
 	} finally {
 		await rm(tempDir, { recursive: true, force: true });
 	}
