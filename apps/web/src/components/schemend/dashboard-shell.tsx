@@ -4,7 +4,6 @@ import {
 	ArrowLeft,
 	Boxes,
 	Cable,
-	CircleHelp,
 	Github,
 	GitPullRequest,
 	History,
@@ -86,7 +85,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 					</div>
 					<div className="flex items-center justify-between">
 						<a
-							href="https://github.com"
+							href="https://github.com/hzlrknbdk/schemend"
 							target="_blank"
 							rel="noreferrer"
 							className="text-sidebar-muted hover:text-sidebar-foreground"
@@ -94,13 +93,6 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 						>
 							<Github className="size-4" />
 						</a>
-						<button
-							type="button"
-							className="text-sidebar-muted hover:text-sidebar-foreground"
-							aria-label="Help"
-						>
-							<CircleHelp className="size-4" />
-						</button>
 						<span className="font-mono text-[10px] text-sidebar-muted">
 							v0.8.4
 						</span>
