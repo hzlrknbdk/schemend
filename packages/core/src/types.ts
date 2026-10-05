@@ -61,6 +61,13 @@ export type Confidence =
 	| "verified-by-build"
 	| "unverified";
 
+/** A PR/MR opened for a service's fix; the PlatformAdapter#openChangeRequest return value, kept once opened. */
+export interface ChangeRequest {
+	url: string;
+	/** Not every platform's openChangeRequest result exposes a number (e.g. a bare URL). */
+	number?: number;
+}
+
 /** The outcome of processing one consumer service end to end; produced once per service per run. */
 export interface ServiceResult {
 	service: string;
@@ -72,6 +79,16 @@ export interface ServiceResult {
 	review: ReviewItem[];
 	confidence: Confidence;
 	costUsd: number;
+	/** Set once `schemend run` calls PlatformAdapter#openChangeRequest; absent for `schemend check` (local-only, never pushes). */
+	changeRequest?: ChangeRequest;
+	/** Unified diff of this service's branch against its base, so a local dashboard can show the change without calling out to the platform. */
+	diff?: string;
+}
+
+/** What started this run: a schema change (internal API) or a dependency release (external SDK). */
+export interface RunTrigger {
+	type: "schema-change" | "package-release";
+	detail: string;
 }
 
 /** The full result of one schemend run across all consumers; produced at the end of `schemend check`/`run`. */
@@ -84,4 +101,5 @@ export interface RunReport {
 	budgetUsd: number;
 	spentUsd: number;
 	stoppedReason?: string;
+	trigger?: RunTrigger;
 }
