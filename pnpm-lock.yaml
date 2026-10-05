@@ -45,9 +45,15 @@ importers:
 
   packages/cli:
     dependencies:
+      '@clack/prompts':
+        specifier: ^1.8.1
+        version: 1.8.1
       '@schemend/core':
         specifier: workspace:*
         version: link:../core
+      '@schemend/lang-typescript':
+        specifier: workspace:*
+        version: link:../lang-typescript
       commander:
         specifier: ^15.0.0
         version: 15.0.0

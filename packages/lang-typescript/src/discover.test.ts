@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { detect, discoverApis } from "./discover.js";
+import { detect, discoverApis, regenerateClient } from "./discover.js";
 
 let root: string;
 
@@ -156,5 +156,79 @@ describe("detect", () => {
 
 	it("is false for an empty directory", async () => {
 		expect(await detect(root)).toBe(false);
+	});
+});
+
+describe("regenerateClient", () => {
+	const api = {
+		name: "orders",
+		kind: "internal" as const,
+		source: {
+			type: "openapi" as const,
+			location: "../../services/orders/openapi.json",
+		},
+		usedIn: ["src/lib"],
+	};
+
+	it("runs the generate script matching the api's schema path", async () => {
+		await writeCheckoutWebFixture();
+		let command = "";
+		const exec = async (cmd: string) => {
+			command = cmd;
+			return { exitCode: 0, stdout: "", stderr: "" };
+		};
+
+		await regenerateClient({ root, exec }, api);
+
+		expect(command).toBe("pnpm run generate:api");
+	});
+
+	it("throws when the generate script fails", async () => {
+		await writeCheckoutWebFixture();
+		const exec = async () => ({
+			exitCode: 1,
+			stdout: "",
+			stderr: "schema not found",
+		});
+
+		await expect(regenerateClient({ root, exec }, api)).rejects.toThrow(
+			/schema not found/,
+		);
+	});
+
+	it("throws when no generate script matches the api's schema path", async () => {
+		await writeCheckoutWebFixture();
+		const otherApi = {
+			...api,
+			source: { type: "openapi" as const, location: "../other/openapi.json" },
+		};
+		const exec = async () => ({ exitCode: 0, stdout: "", stderr: "" });
+
+		await expect(regenerateClient({ root, exec }, otherApi)).rejects.toThrow(
+			/no openapi-typescript generate script/,
+		);
+	});
+
+	it("does nothing for a non-openapi (external package) source", async () => {
+		const packageApi = {
+			name: "firebase",
+			kind: "external" as const,
+			source: {
+				type: "package" as const,
+				ecosystem: "npm" as const,
+				name: "firebase",
+				version: "9.0.0",
+			},
+			usedIn: [],
+		};
+		let called = false;
+		const exec = async () => {
+			called = true;
+			return { exitCode: 0, stdout: "", stderr: "" };
+		};
+
+		await regenerateClient({ root, exec }, packageApi);
+
+		expect(called).toBe(false);
 	});
 });

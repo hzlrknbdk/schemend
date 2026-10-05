@@ -129,6 +129,36 @@ export async function discoverApis(ctx: AdapterContext): Promise<ApiEntry[]> {
 	return clients.map((client) => buildEntry(ctx.root, client, contentsByFile));
 }
 
+/**
+ * Re-runs the package.json script that generates `api`'s client (SPEC §2 step 4: "regenerate
+ * types, then ts-morph + tsc errors locate affected code"). Matched by schema path, not api.name,
+ * since a project can have more than one generate script.
+ */
+export async function regenerateClient(
+	ctx: AdapterContext,
+	api: ApiEntry,
+): Promise<void> {
+	if (api.source.type !== "openapi") return;
+	const { location } = api.source;
+
+	const scripts = await readPackageScripts(ctx.root);
+	const client = findGeneratedClients(scripts).find(
+		(candidate) => candidate.schemaPath === location,
+	);
+	if (!client) {
+		throw new Error(
+			`no openapi-typescript generate script found for schema "${api.source.location}" in ${ctx.root}/package.json`,
+		);
+	}
+
+	const result = await ctx.exec(`pnpm run ${client.scriptName}`);
+	if (result.exitCode !== 0) {
+		throw new Error(
+			`regenerating client for "${api.name}" failed (exit ${result.exitCode}): ${result.stderr || result.stdout}`,
+		);
+	}
+}
+
 async function exists(file: string): Promise<boolean> {
 	try {
 		await access(file);
