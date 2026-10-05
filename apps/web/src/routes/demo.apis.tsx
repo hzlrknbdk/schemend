@@ -9,7 +9,7 @@ import {
 } from "@/components/schemend/dashboard-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { apis } from "@/lib/schemend-data";
+import { apis } from "@/data/schemend-data";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/demo/apis")({

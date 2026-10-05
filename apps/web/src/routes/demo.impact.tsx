@@ -12,7 +12,7 @@ import {
 	PageHeader,
 	Section,
 } from "@/components/schemend/dashboard-shell";
-import { services } from "@/lib/schemend-data";
+import { services } from "@/data/schemend-data";
 
 export const Route = createFileRoute("/demo/impact")({
 	head: () => ({

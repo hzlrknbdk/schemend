@@ -7,7 +7,7 @@ import {
 	StatusBadge,
 } from "@/components/schemend/dashboard-shell";
 import { Button } from "@/components/ui/button";
-import { runs } from "@/lib/schemend-data";
+import { runs } from "@/data/schemend-data";
 export const Route = createFileRoute("/demo/runs")({
 	head: () => ({
 		meta: [
