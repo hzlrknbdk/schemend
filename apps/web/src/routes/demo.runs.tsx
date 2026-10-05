@@ -1,7 +1,117 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Download, ChevronRight } from "lucide-react";
-import { runs } from "@/lib/schemend-data";
-import { DashboardShell, PageHeader, Section, StatusBadge } from "@/components/schemend/dashboard-shell";
+import { ChevronRight, Download } from "lucide-react";
+import {
+	DashboardShell,
+	PageHeader,
+	Section,
+	StatusBadge,
+} from "@/components/schemend/dashboard-shell";
 import { Button } from "@/components/ui/button";
-export const Route = createFileRoute("/demo/runs")({ head: () => ({ meta: [{ title: "Runs History — Schemend" }, { name: "description", content: "Past API migration runs, outcomes, duration, and cost." }, { property: "og:title", content: "Runs History — Schemend" }, { property: "og:description", content: "Past API migration runs, outcomes, duration, and cost." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" }] }), component: Runs });
-function Runs() { return <DashboardShell><PageHeader title="Runs history" description="Past schema and SDK migration runs across all repositories." action={<Button variant="outline" size="sm"><Download/>Export CSV</Button>} /><Section title="All runs" note="78 runs in the last 30 days"><div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left"><thead><tr className="border-b border-border bg-muted/50 text-[11px] uppercase text-muted-foreground">{["Date","Trigger","API","Services","Result","Duration","Cost",""].map((h) => <th className="px-5 py-3 font-medium" key={h}>{h}</th>)}</tr></thead><tbody>{runs.map((run) => <tr key={run.date} className="border-b border-border last:border-0 hover:bg-muted/40"><td className="px-5 py-4 font-mono text-xs text-muted-foreground">{run.date}</td><td className="px-5 py-4 text-xs">{run.trigger}</td><td className="px-5 py-4 text-sm font-medium">{run.api}</td><td className="px-5 py-4 font-mono text-xs">{run.services}</td><td className="px-5 py-4"><StatusBadge status={run.result}/></td><td className="px-5 py-4 font-mono text-xs text-muted-foreground">{run.duration}</td><td className="px-5 py-4 font-mono text-xs">{run.cost}</td><td className="px-5 py-4"><Link to={run.api === "orders-service" ? "/demo/impact" : "/demo/migration"} aria-label={`View ${run.api} run`} className="text-muted-foreground hover:text-primary"><ChevronRight className="size-4"/></Link></td></tr>)}</tbody></table></div><div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground"><span>Showing 7 of 78 runs</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled>Previous</Button><Button size="sm" variant="outline">Next</Button></div></div></Section></DashboardShell>; }
+import { runs } from "@/lib/schemend-data";
+export const Route = createFileRoute("/demo/runs")({
+	head: () => ({
+		meta: [
+			{ title: "Runs History — Schemend" },
+			{
+				name: "description",
+				content: "Past API migration runs, outcomes, duration, and cost.",
+			},
+			{ property: "og:title", content: "Runs History — Schemend" },
+			{
+				property: "og:description",
+				content: "Past API migration runs, outcomes, duration, and cost.",
+			},
+			{ property: "og:type", content: "website" },
+			{ name: "twitter:card", content: "summary_large_image" },
+		],
+	}),
+	component: Runs,
+});
+function Runs() {
+	return (
+		<DashboardShell>
+			<PageHeader
+				title="Runs history"
+				description="Past schema and SDK migration runs across all repositories."
+				action={
+					<Button variant="outline" size="sm">
+						<Download />
+						Export CSV
+					</Button>
+				}
+			/>
+			<Section title="All runs" note="78 runs in the last 30 days">
+				<div className="overflow-x-auto">
+					<table className="w-full min-w-[900px] text-left">
+						<thead>
+							<tr className="border-b border-border bg-muted/50 text-[11px] uppercase text-muted-foreground">
+								{[
+									"Date",
+									"Trigger",
+									"API",
+									"Services",
+									"Result",
+									"Duration",
+									"Cost",
+									"",
+								].map((h) => (
+									<th className="px-5 py-3 font-medium" key={h}>
+										{h}
+									</th>
+								))}
+							</tr>
+						</thead>
+						<tbody>
+							{runs.map((run) => (
+								<tr
+									key={run.date}
+									className="border-b border-border last:border-0 hover:bg-muted/40"
+								>
+									<td className="px-5 py-4 font-mono text-xs text-muted-foreground">
+										{run.date}
+									</td>
+									<td className="px-5 py-4 text-xs">{run.trigger}</td>
+									<td className="px-5 py-4 text-sm font-medium">{run.api}</td>
+									<td className="px-5 py-4 font-mono text-xs">
+										{run.services}
+									</td>
+									<td className="px-5 py-4">
+										<StatusBadge status={run.result} />
+									</td>
+									<td className="px-5 py-4 font-mono text-xs text-muted-foreground">
+										{run.duration}
+									</td>
+									<td className="px-5 py-4 font-mono text-xs">{run.cost}</td>
+									<td className="px-5 py-4">
+										<Link
+											to={
+												run.api === "orders-service"
+													? "/demo/impact"
+													: "/demo/migration"
+											}
+											aria-label={`View ${run.api} run`}
+											className="text-muted-foreground hover:text-primary"
+										>
+											<ChevronRight className="size-4" />
+										</Link>
+									</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+				</div>
+				<div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground">
+					<span>Showing 7 of 78 runs</span>
+					<div className="flex gap-2">
+						<Button size="sm" variant="outline" disabled>
+							Previous
+						</Button>
+						<Button size="sm" variant="outline">
+							Next
+						</Button>
+					</div>
+				</div>
+			</Section>
+		</DashboardShell>
+	);
+}
