@@ -80,7 +80,7 @@ export async function runScenarioInWorktree(
 					real: scenario.real,
 					expected: expectation.expected,
 					result: "invalid",
-					checks: baseline,
+					...(baseline !== undefined ? { checks: baseline } : {}),
 				});
 				continue;
 			}

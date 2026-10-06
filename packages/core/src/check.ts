@@ -300,6 +300,6 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
 		services,
 		budgetUsd: config.budgetUsd,
 		spentUsd: budget.spent,
-		stoppedReason,
+		...(stoppedReason !== undefined ? { stoppedReason } : {}),
 	};
 }

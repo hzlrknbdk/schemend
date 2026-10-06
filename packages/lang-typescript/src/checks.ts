@@ -32,11 +32,9 @@ function toCheckResult(
 	stdout: string,
 	stderr: string,
 ): CheckResult {
-	return {
-		name,
-		status: exitCode === 0 ? "passed" : "failed",
-		detail: exitCode === 0 ? undefined : stderr || stdout,
-	};
+	return exitCode === 0
+		? { name, status: "passed" }
+		: { name, status: "failed", detail: stderr || stdout };
 }
 
 /** LanguageAdapter.build (SPEC §4): typechecks the consumer via its own "typecheck" script. */

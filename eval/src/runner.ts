@@ -111,8 +111,13 @@ export async function runScenario(
 			consumer: consumerKey,
 			real: scenario.real,
 			expected: expectation.expected,
-			result: judge({ expectation, result, remainingMatches, checks }),
-			checks,
+			result: judge({
+				expectation,
+				result,
+				remainingMatches,
+				...(checks !== undefined ? { checks } : {}),
+			}),
+			...(checks !== undefined ? { checks } : {}),
 		});
 	}
 	return rows;
