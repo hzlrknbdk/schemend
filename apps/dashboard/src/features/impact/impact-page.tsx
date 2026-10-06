@@ -1,4 +1,4 @@
-import { cn } from "@schemend/ui";
+import { Callout, Card, Chip, cn } from "@schemend/ui";
 import { Link } from "@tanstack/react-router";
 import {
 	ArrowRight,
@@ -88,24 +88,24 @@ export function ImpactPage({ runs }: ImpactPageProps) {
 					</div>
 				</Section>
 				{flagged.length > 0 && (
-					<div className="rounded-lg border border-warning/30 bg-warning-soft p-5">
-						<ShieldAlert className="size-5 text-warning" />
-						<h2 className="mt-4 text-sm font-semibold">
-							Human review required
-						</h2>
+					<Callout
+						tone="warning"
+						icon={ShieldAlert}
+						title="Human review required"
+					>
 						<p className="mt-2 text-xs leading-5 text-muted-foreground">
 							{flagged[0]?.review[0]?.reason}
 						</p>
 						<p className="mt-4 font-mono text-xs text-warning">
 							{flagged.length} service{flagged.length === 1 ? "" : "s"} flagged
 						</p>
-					</div>
+					</Callout>
 				)}
 			</div>
 			<Section title="Impact map" note="Source API and every affected consumer">
 				<div className="relative px-7 py-8">
 					<div className="grid grid-cols-[250px_1fr] items-center gap-16">
-						<div className="relative z-10 rounded-lg border-2 border-primary bg-card p-5">
+						<Card className="relative z-10 border-2 border-primary p-5">
 							<div className="flex items-center gap-3">
 								<span className="flex size-9 items-center justify-center rounded-md bg-primary-soft text-primary">
 									<Server className="size-4" />
@@ -115,40 +115,44 @@ export function ImpactPage({ runs }: ImpactPageProps) {
 									<p className="text-xs text-muted-foreground">Schema owner</p>
 								</div>
 							</div>
-						</div>
+						</Card>
 						<div className="relative grid grid-cols-2 gap-4 before:absolute before:-left-8 before:top-1/2 before:h-px before:w-8 before:bg-border">
 							{run.services.map((service) => (
-								<Link
+								<Card
 									key={service.service}
-									to="/migration"
-									className="group relative rounded-lg border border-border bg-card p-4 transition-all hover:border-primary/40 hover:shadow-sm before:absolute before:-left-8 before:top-1/2 before:h-px before:w-8 before:bg-border"
+									asChild
+									className="group relative p-4 transition-all hover:border-primary/40 hover:shadow-sm before:absolute before:-left-8 before:top-1/2 before:h-px before:w-8 before:bg-border"
 								>
-									<div className="flex items-start justify-between">
-										<p className="text-sm font-semibold group-hover:text-primary">
-											{service.service}
-										</p>
-										<span className="rounded border border-border bg-muted px-2 py-1 font-mono text-3xs">
-											{service.language}
-										</span>
-									</div>
-									<div className="mt-5 flex items-center justify-between border-t border-border pt-3 text-xs">
-										<span className="flex items-center gap-1.5 text-muted-foreground">
-											<FileCode2 className="size-3.5" />
-											{service.changedFiles.length} files
-										</span>
-										<span
-											className={cn(
-												"flex items-center gap-1.5",
-												service.review.length > 0
-													? "text-warning"
-													: "text-success",
-											)}
-										>
-											<GitPullRequest className="size-3.5" />
-											{service.review.length > 0 ? "Needs review" : "Verified"}
-										</span>
-									</div>
-								</Link>
+									<Link to="/migration">
+										<div className="flex items-start justify-between">
+											<p className="text-sm font-semibold group-hover:text-primary">
+												{service.service}
+											</p>
+											<Chip className="font-mono text-3xs">
+												{service.language}
+											</Chip>
+										</div>
+										<div className="mt-5 flex items-center justify-between border-t border-border pt-3 text-xs">
+											<span className="flex items-center gap-1.5 text-muted-foreground">
+												<FileCode2 className="size-3.5" />
+												{service.changedFiles.length} files
+											</span>
+											<span
+												className={cn(
+													"flex items-center gap-1.5",
+													service.review.length > 0
+														? "text-warning"
+														: "text-success",
+												)}
+											>
+												<GitPullRequest className="size-3.5" />
+												{service.review.length > 0
+													? "Needs review"
+													: "Verified"}
+											</span>
+										</div>
+									</Link>
+								</Card>
 							))}
 						</div>
 					</div>
@@ -156,22 +160,24 @@ export function ImpactPage({ runs }: ImpactPageProps) {
 			</Section>
 			<div className="mt-6 grid grid-cols-4 gap-4">
 				{run.services.map((service) => (
-					<Link
+					<Card
 						key={service.service}
-						to="/migration"
-						className="rounded-lg border border-border bg-card p-4 hover:border-primary/40"
+						asChild
+						className="p-4 hover:border-primary/40"
 					>
-						<div className="flex justify-between">
-							<Braces className="size-4 text-muted-foreground" />
-							<span className="font-mono text-3xs text-muted-foreground">
-								{service.confidence}
-							</span>
-						</div>
-						<p className="mt-4 text-sm font-semibold">{service.service}</p>
-						<p className="mt-1 text-xs text-muted-foreground">
-							View migration detail <ArrowRight className="inline size-3" />
-						</p>
-					</Link>
+						<Link to="/migration">
+							<div className="flex justify-between">
+								<Braces className="size-4 text-muted-foreground" />
+								<span className="font-mono text-3xs text-muted-foreground">
+									{service.confidence}
+								</span>
+							</div>
+							<p className="mt-4 text-sm font-semibold">{service.service}</p>
+							<p className="mt-1 text-xs text-muted-foreground">
+								View migration detail <ArrowRight className="inline size-3" />
+							</p>
+						</Link>
+					</Card>
 				))}
 			</div>
 		</DashboardShell>

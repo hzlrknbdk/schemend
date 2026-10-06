@@ -1,3 +1,4 @@
+import { Callout } from "@schemend/ui";
 import { AlertTriangle } from "lucide-react";
 
 interface ErrorStateProps {
@@ -7,12 +8,10 @@ interface ErrorStateProps {
 
 export function ErrorState({ title, description }: ErrorStateProps) {
 	return (
-		<div className="rounded-lg border border-danger/35 bg-danger-soft p-5">
-			<AlertTriangle className="size-5 text-danger" />
-			<h2 className="mt-3 text-sm font-semibold">{title}</h2>
+		<Callout tone="danger" icon={AlertTriangle} title={title}>
 			<p className="mt-2 text-xs leading-5 text-muted-foreground">
 				{description}
 			</p>
-		</div>
+		</Callout>
 	);
 }

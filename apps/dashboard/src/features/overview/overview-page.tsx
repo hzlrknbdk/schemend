@@ -1,4 +1,4 @@
-import { cn, StatusBadge } from "@schemend/ui";
+import { Card, cn, StatusBadge } from "@schemend/ui";
 import { Link } from "@tanstack/react-router";
 import {
 	ArrowRight,
@@ -91,10 +91,7 @@ export function OverviewPage({ runs }: OverviewPageProps) {
 			/>
 			<div className="grid grid-cols-4 gap-4">
 				{stats.map((stat) => (
-					<div
-						key={stat.label}
-						className="rounded-lg border border-border bg-card p-5"
-					>
+					<Card key={stat.label} className="p-5">
 						<div className="flex items-center justify-between text-muted-foreground">
 							<span className="text-xs font-medium uppercase">
 								{stat.label}
@@ -103,7 +100,7 @@ export function OverviewPage({ runs }: OverviewPageProps) {
 						</div>
 						<p className="mt-4 text-3xl font-semibold">{stat.value}</p>
 						<p className="mt-1 text-xs text-muted-foreground">{stat.detail}</p>
-					</div>
+					</Card>
 				))}
 			</div>
 			<div className="mt-6 grid grid-cols-[minmax(0,1.65fr)_minmax(300px,0.8fr)] gap-6">

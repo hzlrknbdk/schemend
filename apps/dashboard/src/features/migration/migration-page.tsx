@@ -1,4 +1,4 @@
-import { Button, cn, StatusBadge } from "@schemend/ui";
+import { Button, Callout, Card, cn, StatusBadge } from "@schemend/ui";
 import {
 	AlertTriangle,
 	Check,
@@ -68,7 +68,7 @@ export function MigrationPage({ runs }: MigrationPageProps) {
 					)
 				}
 			/>
-			<div className="mb-6 flex items-center gap-3 rounded-lg border border-border bg-card px-5 py-3 text-xs">
+			<Card className="mb-6 flex items-center gap-3 px-5 py-3 text-xs">
 				<GitBranch className="size-4 text-muted-foreground" />
 				<span className="text-muted-foreground">Branch</span>
 				<code className="font-mono">{service.branch || "—"}</code>
@@ -80,7 +80,7 @@ export function MigrationPage({ runs }: MigrationPageProps) {
 						/>
 					</span>
 				)}
-			</div>
+			</Card>
 			<div className="grid grid-cols-[minmax(0,1fr)_320px] gap-6">
 				<div className="space-y-6">
 					<Section title="Steps taken" note="In order">
@@ -163,9 +163,11 @@ export function MigrationPage({ runs }: MigrationPageProps) {
 						</div>
 					</Section>
 					{service.review.length > 0 && (
-						<div className="rounded-lg border border-warning/35 bg-warning-soft p-5">
-							<AlertTriangle className="size-5 text-warning" />
-							<h2 className="mt-3 text-sm font-semibold">Needs your review</h2>
+						<Callout
+							tone="warning"
+							icon={AlertTriangle}
+							title="Needs your review"
+						>
 							{service.review.map((item) => (
 								<p
 									key={item.file}
@@ -177,7 +179,7 @@ export function MigrationPage({ runs }: MigrationPageProps) {
 							<div className="mt-4 border-t border-warning/20 pt-3 font-mono text-2xs text-warning">
 								{service.review[0]?.file}
 							</div>
-						</div>
+						</Callout>
 					)}
 					<Section title="Run cost">
 						<div className="p-5">
