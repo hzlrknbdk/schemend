@@ -35,7 +35,7 @@ export const Route = createFileRoute("/settings")({
 });
 
 function SettingsPage() {
-	const [saved, setSaved] = useState(false);
+	const [isSaved, setIsSaved] = useState(false);
 	return (
 		<DashboardShell>
 			<PageHeader
@@ -48,7 +48,7 @@ function SettingsPage() {
 					note="Read access and pull request permissions"
 				>
 					<div className="divide-y divide-border">
-						{platforms.map(({ name, note, icon: Icon, connected }) => (
+						{platforms.map(({ name, note, icon: Icon, isConnected }) => (
 							<div key={name} className="flex items-center gap-3 px-5 py-4">
 								<span className="flex size-9 items-center justify-center rounded-md border border-border bg-muted">
 									<Icon className="size-4" />
@@ -58,7 +58,7 @@ function SettingsPage() {
 									<p className="text-xs text-muted-foreground">{note}</p>
 								</div>
 								<div className="ml-auto">
-									{connected ? (
+									{isConnected ? (
 										<span className="flex items-center gap-1.5 text-xs text-success">
 											<Check className="size-3.5" />
 											Connected
@@ -152,7 +152,7 @@ function SettingsPage() {
 					note="Choose which agent events reach your team"
 				>
 					<div className="divide-y divide-border">
-						{notificationSettings.map(({ name, note, enabledByDefault }) => (
+						{notificationSettings.map(({ name, note, isEnabledByDefault }) => (
 							<div key={name} className="flex items-center px-5 py-4">
 								<Bell className="mr-3 size-4 text-muted-foreground" />
 								<div>
@@ -161,7 +161,10 @@ function SettingsPage() {
 										{note}
 									</p>
 								</div>
-								<Switch className="ml-auto" defaultChecked={enabledByDefault} />
+								<Switch
+									className="ml-auto"
+									defaultChecked={isEnabledByDefault}
+								/>
 							</div>
 						))}
 					</div>
@@ -181,7 +184,7 @@ function SettingsPage() {
 					</div>
 				</div>
 				<div className="flex items-center gap-3">
-					{saved && (
+					{isSaved && (
 						<span className="text-xs text-success">
 							<Check className="mr-1 inline size-3" />
 							Saved
@@ -190,8 +193,8 @@ function SettingsPage() {
 					<Button
 						type="button"
 						onClick={() => {
-							setSaved(true);
-							window.setTimeout(() => setSaved(false), 2000);
+							setIsSaved(true);
+							window.setTimeout(() => setIsSaved(false), 2000);
 						}}
 					>
 						Save changes

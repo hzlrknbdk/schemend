@@ -1,29 +1,39 @@
 import { Box, Code2, Github, Gitlab, type LucideIcon } from "lucide-react";
 
-export type Platform = {
+export interface Platform {
 	name: string;
 	note: string;
 	icon: LucideIcon;
-	connected: boolean;
-};
+	isConnected: boolean;
+}
 
 export const platforms: Platform[] = [
-	{ name: "GitHub", note: "14 repositories", icon: Github, connected: true },
-	{ name: "GitLab", note: "Not connected", icon: Gitlab, connected: false },
-	{ name: "Bitbucket", note: "Not connected", icon: Box, connected: false },
+	{ name: "GitHub", note: "14 repositories", icon: Github, isConnected: true },
+	{
+		name: "GitLab",
+		note: "Not connected",
+		icon: Gitlab,
+		isConnected: false,
+	},
+	{
+		name: "Bitbucket",
+		note: "Not connected",
+		icon: Box,
+		isConnected: false,
+	},
 	{
 		name: "Azure DevOps",
 		note: "Not connected",
 		icon: Code2,
-		connected: false,
+		isConnected: false,
 	},
 ];
 
-export type LanguageAdapter = {
+export interface LanguageAdapter {
 	name: string;
 	abbreviation: string;
 	note: string;
-};
+}
 
 export const languageAdapters: LanguageAdapter[] = [
 	{
@@ -35,31 +45,31 @@ export const languageAdapters: LanguageAdapter[] = [
 	{ name: "C#", abbreviation: "C#", note: ".NET 8 and 9 · NuGet" },
 ];
 
-export type NotificationSetting = {
+export interface NotificationSetting {
 	name: string;
 	note: string;
-	enabledByDefault: boolean;
-};
+	isEnabledByDefault: boolean;
+}
 
 export const notificationSettings: NotificationSetting[] = [
 	{
 		name: "Pull request opened",
 		note: "When schemend creates a migration PR",
-		enabledByDefault: true,
+		isEnabledByDefault: true,
 	},
 	{
 		name: "Manual review required",
 		note: "When confidence falls below the threshold",
-		enabledByDefault: true,
+		isEnabledByDefault: true,
 	},
 	{
 		name: "Run failed",
 		note: "When build or tests do not pass",
-		enabledByDefault: true,
+		isEnabledByDefault: true,
 	},
 	{
 		name: "Run completed",
 		note: "For every successful migration",
-		enabledByDefault: false,
+		isEnabledByDefault: false,
 	},
 ];
