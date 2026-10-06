@@ -1,0 +1,127 @@
+import { Button } from "@schemend/ui";
+import { Link } from "@tanstack/react-router";
+import { Cable, Github, Menu, Moon, Sun } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+	Sheet,
+	SheetClose,
+	SheetContent,
+	SheetHeader,
+	SheetTitle,
+	SheetTrigger,
+} from "@/components/ui/sheet";
+import { dashboardUrl, githubUrl, readmeUrl } from "@/lib/links";
+
+const navLinks = [
+	{ label: "How it works", href: "#how-it-works" },
+	{ label: "Demo", href: dashboardUrl },
+	{ label: "Docs", href: readmeUrl },
+];
+
+function Brand() {
+	return (
+		<Link to="/" className="flex items-center gap-2.5 font-semibold">
+			<span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
+				<Cable className="size-4" />
+			</span>
+			<span className="text-lg">Schemend</span>
+		</Link>
+	);
+}
+
+function ThemeToggle() {
+	const [isDark, setIsDark] = useState(false);
+	useEffect(() => {
+		setIsDark(document.documentElement.classList.contains("dark"));
+	}, []);
+	const toggle = () => {
+		const next = !isDark;
+		setIsDark(next);
+		document.documentElement.classList.toggle("dark", next);
+	};
+	return (
+		<Button
+			variant="ghost"
+			size="icon"
+			onClick={toggle}
+			aria-label={isDark ? "Use light mode" : "Use dark mode"}
+		>
+			{isDark ? <Sun /> : <Moon />}
+		</Button>
+	);
+}
+
+export function SiteHeader() {
+	return (
+		<header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
+			<div className="mx-auto flex h-16 max-w-7xl items-center px-5 sm:px-8">
+				<Brand />
+				<nav
+					className="ml-auto hidden items-center gap-1 md:flex"
+					aria-label="Primary navigation"
+				>
+					<Button asChild variant="ghost" size="sm">
+						<a href="#how-it-works">How it works</a>
+					</Button>
+					<Button asChild variant="ghost" size="sm">
+						<a href={dashboardUrl} target="_blank" rel="noreferrer">
+							Demo
+						</a>
+					</Button>
+					<Button asChild variant="ghost" size="sm">
+						<a href={readmeUrl} target="_blank" rel="noreferrer">
+							Docs
+						</a>
+					</Button>
+					<Button asChild variant="outline" size="sm">
+						<a href={githubUrl} target="_blank" rel="noreferrer">
+							<Github />
+							GitHub{" "}
+							<span className="font-mono text-3xs text-muted-foreground">
+								★ —
+							</span>
+						</a>
+					</Button>
+					<ThemeToggle />
+				</nav>
+				<div className="ml-auto flex items-center gap-1 md:hidden">
+					<ThemeToggle />
+					<Sheet>
+						<SheetTrigger asChild>
+							<Button variant="ghost" size="icon" aria-label="Open menu">
+								<Menu />
+							</Button>
+						</SheetTrigger>
+						<SheetContent>
+							<SheetHeader>
+								<SheetTitle>
+									<Brand />
+								</SheetTitle>
+							</SheetHeader>
+							<nav className="mt-8 flex flex-col gap-2">
+								{navLinks.map((item) => (
+									<SheetClose asChild key={item.label}>
+										<a
+											href={item.href}
+											target={item.href.startsWith("#") ? undefined : "_blank"}
+											rel={item.href.startsWith("#") ? undefined : "noreferrer"}
+											className="rounded-md px-3 py-3 text-sm font-medium hover:bg-muted"
+										>
+											{item.label}
+										</a>
+									</SheetClose>
+								))}
+								<Button asChild className="mt-3">
+									<a href={githubUrl} target="_blank" rel="noreferrer">
+										<Github />
+										GitHub
+									</a>
+								</Button>
+							</nav>
+						</SheetContent>
+					</Sheet>
+				</div>
+			</div>
+		</header>
+	);
+}

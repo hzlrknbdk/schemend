@@ -198,6 +198,303 @@
 					}
 				}
 			}
+		},
+		{
+			"includes": [
+				"apps/landing/src/sections/hero/**",
+				"apps/landing/src/sections/hero.tsx"
+			],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": [
+											"@/sections/**",
+											"!@/sections/hero",
+											"!@/sections/hero.tsx",
+											"@/routes/**"
+										]
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": [
+				"apps/landing/src/sections/problem/**",
+				"apps/landing/src/sections/problem.tsx"
+			],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": [
+											"@/sections/**",
+											"!@/sections/problem",
+											"!@/sections/problem.tsx",
+											"@/routes/**"
+										]
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": [
+				"apps/landing/src/sections/how-it-works/**",
+				"apps/landing/src/sections/how-it-works.tsx"
+			],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": [
+											"@/sections/**",
+											"!@/sections/how-it-works",
+											"!@/sections/how-it-works.tsx",
+											"@/routes/**"
+										]
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": [
+				"apps/landing/src/sections/multi-language/**",
+				"apps/landing/src/sections/multi-language.tsx"
+			],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": [
+											"@/sections/**",
+											"!@/sections/multi-language",
+											"!@/sections/multi-language.tsx",
+											"@/routes/**"
+										]
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": [
+				"apps/landing/src/sections/explicit-uncertainty/**",
+				"apps/landing/src/sections/explicit-uncertainty.tsx"
+			],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": [
+											"@/sections/**",
+											"!@/sections/explicit-uncertainty",
+											"!@/sections/explicit-uncertainty.tsx",
+											"@/routes/**"
+										]
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": [
+				"apps/landing/src/sections/evaluation/**",
+				"apps/landing/src/sections/evaluation.tsx"
+			],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": [
+											"@/sections/**",
+											"!@/sections/evaluation",
+											"!@/sections/evaluation.tsx",
+											"@/routes/**"
+										]
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": [
+				"apps/landing/src/sections/compatibility/**",
+				"apps/landing/src/sections/compatibility.tsx"
+			],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": [
+											"@/sections/**",
+											"!@/sections/compatibility",
+											"!@/sections/compatibility.tsx",
+											"@/routes/**"
+										]
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": [
+				"apps/landing/src/sections/security-and-cost/**",
+				"apps/landing/src/sections/security-and-cost.tsx"
+			],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": [
+											"@/sections/**",
+											"!@/sections/security-and-cost",
+											"!@/sections/security-and-cost.tsx",
+											"@/routes/**"
+										]
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": [
+				"apps/landing/src/sections/quick-start/**",
+				"apps/landing/src/sections/quick-start.tsx"
+			],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": [
+											"@/sections/**",
+											"!@/sections/quick-start",
+											"!@/sections/quick-start.tsx",
+											"@/routes/**"
+										]
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": [
+				"apps/landing/src/sections/faq/**",
+				"apps/landing/src/sections/faq.tsx"
+			],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": [
+											"@/sections/**",
+											"!@/sections/faq",
+											"!@/sections/faq.tsx",
+											"@/routes/**"
+										]
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": [
+				"apps/landing/src/sections/cta/**",
+				"apps/landing/src/sections/cta.tsx"
+			],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": [
+											"@/sections/**",
+											"!@/sections/cta",
+											"!@/sections/cta.tsx",
+											"@/routes/**"
+										]
+									}
+								]
+							}
+						}
+					}
+				}
+			}
 		}
 	],
 	"javascript": {
