@@ -1,3 +1,4 @@
+import { cn } from "@schemend/ui";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
 	ArrowRight,
@@ -13,7 +14,6 @@ import { StatusBadge } from "@/components/dashboard/status-badge";
 import { type ActivityTone, activityEvent } from "@/lib/activity";
 import { formatDateTime } from "@/lib/format";
 import { breakingChangeCount, runStatus } from "@/lib/run-status";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
 	head: () => ({

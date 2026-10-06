@@ -12,7 +12,8 @@
 			"!apps/landing/src/components/ui",
 			"!apps/landing/src/routeTree.gen.ts",
 			"!apps/dashboard/src/components/ui",
-			"!apps/dashboard/src/routeTree.gen.ts"
+			"!apps/dashboard/src/routeTree.gen.ts",
+			"!packages/ui/src/vendor"
 		]
 	},
 	"formatter": {
@@ -27,7 +28,11 @@
 	},
 	"overrides": [
 		{
-			"includes": ["apps/landing/src/**", "apps/dashboard/src/**"],
+			"includes": [
+				"apps/landing/src/**",
+				"apps/dashboard/src/**",
+				"packages/ui/src/**"
+			],
 			"linter": {
 				"rules": {
 					"style": {

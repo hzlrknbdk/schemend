@@ -1,10 +1,10 @@
+import { Button } from "@schemend/ui";
 import { createFileRoute } from "@tanstack/react-router";
 import { Bell, Check, WalletCards } from "lucide-react";
 import { useState } from "react";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Section } from "@/components/dashboard/section";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
 	Select,

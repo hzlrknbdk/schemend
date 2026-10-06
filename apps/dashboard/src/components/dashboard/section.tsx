@@ -1,5 +1,5 @@
+import { cn } from "@schemend/ui";
 import type { ReactNode } from "react";
-import { cn } from "@/lib/utils";
 
 interface SectionProps {
 	title: string;

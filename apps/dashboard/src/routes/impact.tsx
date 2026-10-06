@@ -1,3 +1,4 @@
+import { cn } from "@schemend/ui";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
 	ArrowRight,
@@ -12,7 +13,6 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Section } from "@/components/dashboard/section";
 import { formatDateTime } from "@/lib/format";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/impact")({
 	head: () => ({

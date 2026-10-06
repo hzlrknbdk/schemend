@@ -1,3 +1,4 @@
+import { cn } from "@schemend/ui";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
 	Activity,
@@ -11,7 +12,6 @@ import {
 	Settings,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { cn } from "@/lib/utils";
 
 const landingUrl = import.meta.env.VITE_LANDING_URL ?? "https://schemend.dev";
 

@@ -1,3 +1,4 @@
+import { Button, cn } from "@schemend/ui";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
 	ArrowRight,
@@ -21,7 +22,6 @@ import {
 	AccordionItem,
 	AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Button } from "@/components/ui/button";
 import {
 	Sheet,
 	SheetClose,
@@ -31,7 +31,6 @@ import {
 	SheetTrigger,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
 	head: () => ({
