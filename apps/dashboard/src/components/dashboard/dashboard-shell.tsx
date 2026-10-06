@@ -1,4 +1,4 @@
-import { cn } from "@schemend/ui";
+import { cn, StatusDot } from "@schemend/ui";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
 	Activity,
@@ -82,8 +82,8 @@ export function DashboardShell({ children }: DashboardShellProps) {
 						Back to schemend.dev
 					</a>
 					<div className="mb-3 flex items-center gap-2 text-xs text-sidebar-muted">
-						<span className="size-2 rounded-full bg-success" />
-						Agent operational
+						<StatusDot tone="success" label="Agent operational" />
+						<span aria-hidden="true">Agent operational</span>
 					</div>
 					<div className="flex items-center justify-between">
 						<a

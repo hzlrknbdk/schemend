@@ -1,4 +1,4 @@
-import { Card, cn, StatusBadge } from "@schemend/ui";
+import { Card, cn, StatusBadge, StatusDot } from "@schemend/ui";
 import { Link } from "@tanstack/react-router";
 import {
 	ArrowRight,
@@ -84,8 +84,8 @@ export function OverviewPage({ runs }: OverviewPageProps) {
 				description="API compatibility across your services, derived from the latest runs."
 				action={
 					<div className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
-						<span className="size-2 rounded-full bg-success" />
-						Agent is monitoring
+						<StatusDot tone="success" label="Agent is monitoring" />
+						<span aria-hidden="true">Agent is monitoring</span>
 					</div>
 				}
 			/>
