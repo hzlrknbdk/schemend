@@ -64,12 +64,16 @@ const readmeUrl = "https://github.com/hzlrknbdk/schemend#readme";
 const dashboardUrl =
 	import.meta.env.VITE_DASHBOARD_URL ?? "https://demo.schemend.dev";
 
-function CopyCommand({ command }: { command: string }) {
-	const [copied, setCopied] = useState(false);
+interface CopyCommandProps {
+	command: string;
+}
+
+function CopyCommand({ command }: CopyCommandProps) {
+	const [isCopied, setIsCopied] = useState(false);
 	const copy = async () => {
 		await navigator.clipboard.writeText(command);
-		setCopied(true);
-		window.setTimeout(() => setCopied(false), 1600);
+		setIsCopied(true);
+		window.setTimeout(() => setIsCopied(false), 1600);
 	};
 	return (
 		<div className="flex w-full min-w-0 max-w-full items-center justify-between gap-4 overflow-hidden rounded-md border border-border bg-code px-4 py-3 text-code-foreground">
@@ -83,20 +87,20 @@ function CopyCommand({ command }: { command: string }) {
 				aria-label={`Copy ${command}`}
 				className="shrink-0 text-code-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
 			>
-				{copied ? <Check /> : <Clipboard />}
+				{isCopied ? <Check /> : <Clipboard />}
 			</Button>
 		</div>
 	);
 }
 
 function ThemeToggle() {
-	const [dark, setDark] = useState(false);
+	const [isDark, setIsDark] = useState(false);
 	useEffect(() => {
-		setDark(document.documentElement.classList.contains("dark"));
+		setIsDark(document.documentElement.classList.contains("dark"));
 	}, []);
 	const toggle = () => {
-		const next = !dark;
-		setDark(next);
+		const next = !isDark;
+		setIsDark(next);
 		document.documentElement.classList.toggle("dark", next);
 	};
 	return (
@@ -104,9 +108,9 @@ function ThemeToggle() {
 			variant="ghost"
 			size="icon"
 			onClick={toggle}
-			aria-label={dark ? "Use light mode" : "Use dark mode"}
+			aria-label={isDark ? "Use light mode" : "Use dark mode"}
 		>
-			{dark ? <Sun /> : <Moon />}
+			{isDark ? <Sun /> : <Moon />}
 		</Button>
 	);
 }
@@ -595,15 +599,13 @@ function LandingPage() {
 	);
 }
 
-function SectionHeading({
-	eyebrow,
-	title,
-	text,
-}: {
+interface SectionHeadingProps {
 	eyebrow: string;
 	title: string;
 	text?: string;
-}) {
+}
+
+function SectionHeading({ eyebrow, title, text }: SectionHeadingProps) {
 	return (
 		<div className="mb-12 max-w-3xl">
 			<p className="font-mono text-xs font-medium uppercase text-primary">
