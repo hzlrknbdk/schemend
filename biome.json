@@ -25,6 +25,38 @@
 			"preset": "recommended"
 		}
 	},
+	"overrides": [
+		{
+			"includes": ["apps/landing/src/**", "apps/dashboard/src/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noDefaultExport": "error",
+						"useConsistentTypeDefinitions": "error",
+						"useFilenamingConvention": {
+							"level": "error",
+							"options": {
+								"filenameCases": ["kebab-case"]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": [
+				"apps/landing/src/routes/**",
+				"apps/dashboard/src/routes/**"
+			],
+			"linter": {
+				"rules": {
+					"style": {
+						"useFilenamingConvention": "off"
+					}
+				}
+			}
+		}
+	],
 	"javascript": {
 		"formatter": {
 			"quoteStyle": "double"
