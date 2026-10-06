@@ -9,8 +9,10 @@
 		"ignoreUnknown": false,
 		"includes": [
 			"**",
-			"!apps/web/src/components/ui",
-			"!apps/web/src/routeTree.gen.ts"
+			"!apps/landing/src/components/ui",
+			"!apps/landing/src/routeTree.gen.ts",
+			"!apps/dashboard/src/components/ui",
+			"!apps/dashboard/src/routeTree.gen.ts"
 		]
 	},
 	"formatter": {
