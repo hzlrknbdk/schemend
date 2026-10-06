@@ -27,7 +27,8 @@
 		"react-dom": "^19.2.0",
 		"tailwindcss": "^4.2.1",
 		"tw-animate-css": "^1.3.4",
-		"vite-tsconfig-paths": "^6.0.2"
+		"vite-tsconfig-paths": "^6.0.2",
+		"zod": "^4.6.5"
 	},
 	"devDependencies": {
 		"@schemend/config": "workspace:*",
@@ -36,7 +37,6 @@
 		"@types/react-dom": "^19.2.0",
 		"@vitejs/plugin-react": "^5.2.0",
 		"typescript": "^5.8.3",
-		"vite": "8.1.5",
-		"zod": "^4.6.5"
+		"vite": "8.1.5"
 	}
 }
