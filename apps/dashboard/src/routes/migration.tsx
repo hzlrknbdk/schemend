@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { EmptyState } from "@/components/dashboard/empty-state";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Section } from "@/components/dashboard/section";
 import { StatusBadge } from "@/components/dashboard/status-badge";
@@ -48,7 +49,7 @@ function Migration() {
 	if (!run || !service) {
 		return (
 			<DashboardShell>
-				<PageHeader
+				<EmptyState
 					title="Migration detail"
 					description="No runs recorded yet."
 				/>

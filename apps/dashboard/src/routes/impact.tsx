@@ -8,6 +8,7 @@ import {
 	ShieldAlert,
 } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { EmptyState } from "@/components/dashboard/empty-state";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Section } from "@/components/dashboard/section";
 import { formatDateTime } from "@/lib/format";
@@ -34,7 +35,7 @@ function Impact() {
 	if (!run) {
 		return (
 			<DashboardShell>
-				<PageHeader title="Change impact" description="No runs recorded yet." />
+				<EmptyState title="Change impact" description="No runs recorded yet." />
 			</DashboardShell>
 		);
 	}
