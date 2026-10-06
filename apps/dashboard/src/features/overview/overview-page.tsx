@@ -1,4 +1,4 @@
-import { cn } from "@schemend/ui";
+import { cn, StatusBadge } from "@schemend/ui";
 import { Link } from "@tanstack/react-router";
 import {
 	ArrowRight,
@@ -10,7 +10,6 @@ import {
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Section } from "@/components/dashboard/section";
-import { StatusBadge } from "@/components/dashboard/status-badge";
 import { formatDateTime } from "@/lib/format";
 import {
 	breakingChangeCount,

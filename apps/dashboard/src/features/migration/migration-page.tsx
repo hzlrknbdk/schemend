@@ -1,4 +1,4 @@
-import { Button, cn } from "@schemend/ui";
+import { Button, cn, StatusBadge } from "@schemend/ui";
 import {
 	AlertTriangle,
 	Check,
@@ -11,7 +11,6 @@ import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Section } from "@/components/dashboard/section";
-import { StatusBadge } from "@/components/dashboard/status-badge";
 import { formatCost } from "@/lib/format";
 import { runStatusTone } from "@/lib/run-status";
 import type { CheckResult, RunReport } from "@/repository";

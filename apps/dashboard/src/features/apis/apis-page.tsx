@@ -1,11 +1,9 @@
-import { Button, cn } from "@schemend/ui";
+import { Button, cn, StatusBadge, type Tone } from "@schemend/ui";
 import { ArrowUpDown, Search, SlidersHorizontal } from "lucide-react";
 import { useMemo, useState } from "react";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Section } from "@/components/dashboard/section";
-import type { BadgeTone } from "@/components/dashboard/status-badge";
-import { StatusBadge } from "@/components/dashboard/status-badge";
 import { Input } from "@/components/ui/input";
 import { formatDateTime } from "@/lib/format";
 import {
@@ -25,7 +23,7 @@ const kinds = ["All kinds", "internal", "external"] as const;
 
 type ApiStatus = RunStatus | "Not yet checked";
 
-const apiStatusTone: Record<ApiStatus, BadgeTone> = {
+const apiStatusTone: Record<ApiStatus, Tone> = {
 	...runStatusTone,
 	"Not yet checked": "neutral",
 };

@@ -1,4 +1,4 @@
-import type { BadgeTone } from "@/components/dashboard/status-badge";
+import type { Tone } from "@schemend/ui";
 import type { RunReport } from "@/repository";
 
 export type RunStatus = "Needs review" | "PRs opened" | "Fixed" | "Stopped";
@@ -13,7 +13,7 @@ export function runStatus(run: RunReport): RunStatus {
 	return "Fixed";
 }
 
-export const runStatusTone: Record<RunStatus, BadgeTone> = {
+export const runStatusTone: Record<RunStatus, Tone> = {
 	Fixed: "success",
 	"PRs opened": "success",
 	"Needs review": "warning",

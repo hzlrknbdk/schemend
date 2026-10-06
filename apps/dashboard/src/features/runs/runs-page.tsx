@@ -1,10 +1,9 @@
-import { Button } from "@schemend/ui";
+import { Button, StatusBadge } from "@schemend/ui";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight, Download } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Section } from "@/components/dashboard/section";
-import { StatusBadge } from "@/components/dashboard/status-badge";
 import { formatCost, formatDateTime, formatDuration } from "@/lib/format";
 import { runStatus, runStatusTone, triggerLabel } from "@/lib/run-status";
 import type { RunReport } from "@/repository";
