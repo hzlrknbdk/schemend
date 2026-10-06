@@ -13,14 +13,15 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { Section } from "@/components/dashboard/section";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { formatCost } from "@/lib/format";
-import type { RunReport } from "@/repository";
+import { runStatusTone } from "@/lib/run-status";
+import type { CheckResult, RunReport } from "@/repository";
 import { parseUnifiedDiff } from "./lib/diff";
 
 export interface MigrationPageProps {
 	runs: RunReport[];
 }
 
-const checkStatusClasses: Record<string, string> = {
+const checkStatusClasses: Record<CheckResult["status"], string> = {
 	passed: "text-success",
 	failed: "text-danger",
 	skipped: "text-muted-foreground",
@@ -74,7 +75,10 @@ export function MigrationPage({ runs }: MigrationPageProps) {
 				<code className="font-mono">{service.branch || "—"}</code>
 				{service.changeRequest && (
 					<span className="ml-auto">
-						<StatusBadge status="PRs opened" />
+						<StatusBadge
+							tone={runStatusTone["PRs opened"]}
+							label="PRs opened"
+						/>
 					</span>
 				)}
 			</div>

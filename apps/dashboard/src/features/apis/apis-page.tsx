@@ -4,10 +4,16 @@ import { useMemo, useState } from "react";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Section } from "@/components/dashboard/section";
+import type { BadgeTone } from "@/components/dashboard/status-badge";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { Input } from "@/components/ui/input";
 import { formatDateTime } from "@/lib/format";
-import { breakingChangeCount, runStatus } from "@/lib/run-status";
+import {
+	breakingChangeCount,
+	type RunStatus,
+	runStatus,
+	runStatusTone,
+} from "@/lib/run-status";
 import type { ApiEntry, RunReport } from "@/repository";
 
 export interface ApisPageProps {
@@ -17,10 +23,26 @@ export interface ApisPageProps {
 
 const kinds = ["All kinds", "internal", "external"] as const;
 
+type ApiStatus = RunStatus | "Not yet checked";
+
+const apiStatusTone: Record<ApiStatus, BadgeTone> = {
+	...runStatusTone,
+	"Not yet checked": "neutral",
+};
+
+function apiStatus(lastRun: RunReport | undefined): ApiStatus {
+	return lastRun ? runStatus(lastRun) : "Not yet checked";
+}
+
 function formatSource(source: ApiEntry["source"]): string {
-	return source.type === "openapi"
-		? source.location
-		: `${source.ecosystem} · ${source.name}@${source.version}`;
+	switch (source.type) {
+		case "openapi":
+			return source.location;
+		case "package":
+			return `${source.ecosystem} · ${source.name}@${source.version}`;
+		default:
+			return source satisfies never;
+	}
 }
 
 export function ApisPage({ apis, runs }: ApisPageProps) {
@@ -141,11 +163,10 @@ export function ApisPage({ apis, runs }: ApisPageProps) {
 										)}
 									</td>
 									<td className="px-5 py-4">
-										{lastRun ? (
-											<StatusBadge status={runStatus(lastRun)} />
-										) : (
-											<StatusBadge status="Not yet checked" />
-										)}
+										<StatusBadge
+											tone={apiStatusTone[apiStatus(lastRun)]}
+											label={apiStatus(lastRun)}
+										/>
 									</td>
 									<td className="px-5 py-4 font-mono text-xs text-muted-foreground">
 										{lastRun ? formatDateTime(lastRun.startedAt) : "Never"}

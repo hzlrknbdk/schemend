@@ -10,4 +10,9 @@ export interface Repository {
 	listApis(): Promise<ApiEntry[]>;
 }
 
-export type { ApiEntry, RunReport, ServiceResult } from "@schemend/core";
+export type {
+	ApiEntry,
+	CheckResult,
+	RunReport,
+	ServiceResult,
+} from "@schemend/core";

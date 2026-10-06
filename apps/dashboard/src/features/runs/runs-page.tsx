@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { Section } from "@/components/dashboard/section";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { formatCost, formatDateTime, formatDuration } from "@/lib/format";
-import { runStatus } from "@/lib/run-status";
+import { runStatus, runStatusTone, triggerLabel } from "@/lib/run-status";
 import type { RunReport } from "@/repository";
 
 export interface RunsPageProps {
@@ -61,18 +61,17 @@ export function RunsPage({ runs: unsortedRuns }: RunsPageProps) {
 										{formatDateTime(run.startedAt)}
 									</td>
 									<td className="px-5 py-4 text-xs">
-										{run.trigger?.type === "schema-change"
-											? "Schema change"
-											: run.trigger?.type === "package-release"
-												? "SDK release"
-												: "—"}
+										{triggerLabel(run.trigger)}
 									</td>
 									<td className="px-5 py-4 text-sm font-medium">{run.api}</td>
 									<td className="px-5 py-4 font-mono text-xs">
 										{run.services.length}
 									</td>
 									<td className="px-5 py-4">
-										<StatusBadge status={runStatus(run)} />
+										<StatusBadge
+											tone={runStatusTone[runStatus(run)]}
+											label={runStatus(run)}
+										/>
 									</td>
 									<td className="px-5 py-4 font-mono text-xs text-muted-foreground">
 										{formatDuration(run.startedAt, run.finishedAt)}

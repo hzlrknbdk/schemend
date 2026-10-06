@@ -12,7 +12,11 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { Section } from "@/components/dashboard/section";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { formatDateTime } from "@/lib/format";
-import { breakingChangeCount, runStatus } from "@/lib/run-status";
+import {
+	breakingChangeCount,
+	runStatus,
+	runStatusTone,
+} from "@/lib/run-status";
 import type { RunReport } from "@/repository";
 import { type ActivityTone, activityEvent } from "./lib/activity";
 
@@ -141,7 +145,10 @@ export function OverviewPage({ runs }: OverviewPageProps) {
 									<p className="text-2xs text-muted-foreground">services</p>
 								</div>
 								<div className="flex flex-col items-end gap-1.5">
-									<StatusBadge status={runStatus(run)} />
+									<StatusBadge
+										tone={runStatusTone[runStatus(run)]}
+										label={runStatus(run)}
+									/>
 									<span className="text-3xs text-muted-foreground">
 										{formatDateTime(run.startedAt)}
 									</span>

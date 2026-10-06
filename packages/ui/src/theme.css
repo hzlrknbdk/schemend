@@ -36,6 +36,8 @@
 	--color-warning-foreground: var(--warning-foreground);
 	--color-danger: var(--danger);
 	--color-danger-soft: var(--danger-soft);
+	--color-info: var(--info);
+	--color-info-soft: var(--info-soft);
 	--color-code: var(--code);
 	--color-code-foreground: var(--code-foreground);
 	--color-sidebar: var(--sidebar);
@@ -76,6 +78,8 @@
 	--danger: oklch(0.57 0.2 26);
 	--danger-soft: oklch(0.96 0.035 26);
 	--danger-foreground: oklch(0.99 0 0);
+	--info: oklch(0.55 0.15 230);
+	--info-soft: oklch(0.96 0.03 230);
 	--code: oklch(0.18 0.02 257);
 	--code-foreground: oklch(0.82 0.015 255);
 	--sidebar: oklch(0.16 0.025 257);
@@ -114,6 +118,8 @@
 	--warning-foreground: oklch(0.94 0.03 80);
 	--danger: oklch(0.72 0.18 26);
 	--danger-soft: oklch(0.25 0.06 26);
+	--info: oklch(0.75 0.13 230);
+	--info-soft: oklch(0.26 0.05 230);
 	--code: oklch(0.105 0.015 257);
 	--code-foreground: oklch(0.82 0.015 255);
 }
