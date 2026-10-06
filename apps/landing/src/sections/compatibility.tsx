@@ -1,3 +1,4 @@
+import { Chip } from "@schemend/ui";
 import { SectionHeading } from "@/components/section-heading";
 
 const groups: [group: string, items: string[]][] = [
@@ -23,12 +24,7 @@ export function Compatibility() {
 							</h3>
 							<div className="flex flex-wrap gap-2">
 								{items.map((item) => (
-									<span
-										key={item}
-										className="rounded-md border border-border bg-background px-3 py-2 text-sm"
-									>
-										{item}
-									</span>
+									<Chip key={item}>{item}</Chip>
 								))}
 							</div>
 						</div>

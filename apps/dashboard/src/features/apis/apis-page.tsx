@@ -1,4 +1,4 @@
-import { Button, cn, StatusBadge, type Tone } from "@schemend/ui";
+import { Button, Chip, cn, StatusBadge, type Tone } from "@schemend/ui";
 import { ArrowUpDown, Search, SlidersHorizontal } from "lucide-react";
 import { useMemo, useState } from "react";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
@@ -139,9 +139,7 @@ export function ApisPage({ apis, runs }: ApisPageProps) {
 								>
 									<td className="px-5 py-4 text-sm font-medium">{api.name}</td>
 									<td className="px-5 py-4">
-										<span className="rounded border border-border bg-muted px-2 py-1 text-xs">
-											{api.kind}
-										</span>
+										<Chip>{api.kind}</Chip>
 									</td>
 									<td className="px-5 py-4 font-mono text-xs text-muted-foreground">
 										{formatSource(api.source)}
