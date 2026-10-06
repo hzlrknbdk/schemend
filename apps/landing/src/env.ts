@@ -1,0 +1,10 @@
+declare const __SCHEMEND_ENV__: {
+	VITE_DASHBOARD_URL: string;
+};
+
+/**
+ * Validated with zod in vite.config.ts at build/dev-server start, then inlined as a literal by
+ * Vite's `define`. This is the only place in the app that touches the result — no other file
+ * reads `import.meta.env` directly, and zod itself never ships in the client bundle.
+ */
+export const env = __SCHEMEND_ENV__;

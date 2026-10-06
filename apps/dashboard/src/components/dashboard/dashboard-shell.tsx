@@ -12,8 +12,9 @@ import {
 	Settings,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { env } from "@/env";
 
-const landingUrl = import.meta.env.VITE_LANDING_URL ?? "https://schemend.dev";
+const landingUrl = env.VITE_LANDING_URL;
 
 const navigation = [
 	{ label: "Overview", to: "/", icon: LayoutDashboard },
