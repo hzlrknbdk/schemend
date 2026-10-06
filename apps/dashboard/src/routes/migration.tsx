@@ -7,12 +7,10 @@ import {
 	GitBranch,
 } from "lucide-react";
 import { useState } from "react";
-import {
-	DashboardShell,
-	PageHeader,
-	Section,
-	StatusBadge,
-} from "@/components/dashboard/dashboard-shell";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { Section } from "@/components/dashboard/section";
+import { StatusBadge } from "@/components/dashboard/status-badge";
 import { Button } from "@/components/ui/button";
 import { parseUnifiedDiff } from "@/lib/diff";
 import { formatCost } from "@/lib/format";
@@ -197,9 +195,7 @@ function Migration() {
 									<p className="font-mono text-lg font-semibold">
 										{formatCost(service.costUsd)}
 									</p>
-									<p className="text-2xs text-muted-foreground">
-										this service
-									</p>
+									<p className="text-2xs text-muted-foreground">this service</p>
 								</div>
 							</div>
 						</div>

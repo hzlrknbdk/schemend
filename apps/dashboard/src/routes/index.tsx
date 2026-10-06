@@ -6,12 +6,10 @@ import {
 	GitBranch,
 	GitPullRequest,
 } from "lucide-react";
-import {
-	DashboardShell,
-	PageHeader,
-	Section,
-	StatusBadge,
-} from "@/components/dashboard/dashboard-shell";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { Section } from "@/components/dashboard/section";
+import { StatusBadge } from "@/components/dashboard/status-badge";
 import { type ActivityTone, activityEvent } from "@/lib/activity";
 import { formatDateTime } from "@/lib/format";
 import { breakingChangeCount, runStatus } from "@/lib/run-status";

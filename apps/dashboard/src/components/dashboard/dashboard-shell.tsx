@@ -24,7 +24,11 @@ const navigation = [
 	{ label: "Settings", to: "/settings", icon: Settings },
 ] as const;
 
-export function DashboardShell({ children }: { children: ReactNode }) {
+interface DashboardShellProps {
+	children: ReactNode;
+}
+
+export function DashboardShell({ children }: DashboardShellProps) {
 	const pathname = useRouterState({
 		select: (state) => state.location.pathname,
 	});
@@ -47,7 +51,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 						Workspace
 					</p>
 					{navigation.map((item) => {
-						const active =
+						const isActive =
 							item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
 						return (
 							<Link
@@ -56,11 +60,12 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 								activeOptions={{ exact: true }}
 								className={cn(
 									"flex h-10 items-center gap-3 rounded-md px-3 text-sm text-sidebar-muted transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-									active && "bg-sidebar-accent text-sidebar-accent-foreground",
+									isActive &&
+										"bg-sidebar-accent text-sidebar-accent-foreground",
 								)}
 							>
 								<item.icon
-									className={cn("size-4", active && "text-sidebar-primary")}
+									className={cn("size-4", isActive && "text-sidebar-primary")}
 								/>
 								<span>{item.label}</span>
 							</Link>
@@ -99,90 +104,5 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 				<div className="mx-auto max-w-[1440px] p-8 lg:p-10">{children}</div>
 			</main>
 		</div>
-	);
-}
-
-export function StatusBadge({ status }: { status: string }) {
-	const warning = status === "Needs review" || status === "Stopped";
-	const success = status === "Fixed" || status === "PRs opened";
-	return (
-		<span
-			className={cn(
-				"inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium",
-				warning && "border-warning/25 bg-warning-soft text-warning",
-				success && "border-success/25 bg-success-soft text-success",
-				!warning && !success && "border-border bg-muted text-muted-foreground",
-			)}
-		>
-			<span
-				className={cn(
-					"size-1.5 rounded-full",
-					warning && "bg-warning",
-					success && "bg-success",
-					!warning && !success && "bg-muted-foreground",
-				)}
-			/>
-			{status}
-		</span>
-	);
-}
-
-export function PageHeader({
-	eyebrow,
-	title,
-	description,
-	action,
-}: {
-	eyebrow?: string | undefined;
-	title: string;
-	description: string;
-	action?: ReactNode | undefined;
-}) {
-	return (
-		<header className="mb-8 flex items-start justify-between gap-6">
-			<div>
-				{eyebrow && (
-					<p className="mb-2 font-mono text-xs font-medium uppercase text-primary">
-						{eyebrow}
-					</p>
-				)}
-				<h1 className="text-2xl font-semibold text-foreground">{title}</h1>
-				<p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-					{description}
-				</p>
-			</div>
-			{action}
-		</header>
-	);
-}
-
-export function Section({
-	title,
-	note,
-	action,
-	children,
-	className,
-}: {
-	title: string;
-	note?: string | undefined;
-	action?: ReactNode | undefined;
-	children: ReactNode;
-	className?: string | undefined;
-}) {
-	return (
-		<section
-			className={cn("rounded-lg border border-border bg-card", className)}
-		>
-			<div className="flex min-h-14 items-center justify-between border-b border-border px-5">
-				<div>
-					<h2 className="text-sm font-semibold">{title}</h2>
-					{note && (
-						<p className="mt-0.5 text-xs text-muted-foreground">{note}</p>
-					)}
-				</div>
-				{action}
-			</div>
-			{children}
-		</section>
 	);
 }

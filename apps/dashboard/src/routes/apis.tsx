@@ -1,12 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ArrowUpDown, Search, SlidersHorizontal } from "lucide-react";
 import { useMemo, useState } from "react";
-import {
-	DashboardShell,
-	PageHeader,
-	Section,
-	StatusBadge,
-} from "@/components/dashboard/dashboard-shell";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { Section } from "@/components/dashboard/section";
+import { StatusBadge } from "@/components/dashboard/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatDateTime } from "@/lib/format";

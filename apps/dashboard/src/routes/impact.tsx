@@ -7,11 +7,9 @@ import {
 	Server,
 	ShieldAlert,
 } from "lucide-react";
-import {
-	DashboardShell,
-	PageHeader,
-	Section,
-} from "@/components/dashboard/dashboard-shell";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { Section } from "@/components/dashboard/section";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
