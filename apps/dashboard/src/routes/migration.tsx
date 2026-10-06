@@ -117,7 +117,7 @@ function Migration() {
 										type="button"
 										onClick={() => setSelectedFile(i)}
 										className={cn(
-											"border-r border-border px-4 py-3 font-mono text-[11px] text-muted-foreground",
+											"border-r border-border px-4 py-3 font-mono text-2xs text-muted-foreground",
 											i === selectedFile &&
 												"bg-card text-foreground shadow-[inset_0_-2px_0_var(--primary)]",
 										)}
@@ -184,7 +184,7 @@ function Migration() {
 									{item.reason}
 								</p>
 							))}
-							<div className="mt-4 border-t border-warning/20 pt-3 font-mono text-[11px] text-warning">
+							<div className="mt-4 border-t border-warning/20 pt-3 font-mono text-2xs text-warning">
 								{service.review[0]?.file}
 							</div>
 						</div>
@@ -197,7 +197,7 @@ function Migration() {
 									<p className="font-mono text-lg font-semibold">
 										{formatCost(service.costUsd)}
 									</p>
-									<p className="text-[11px] text-muted-foreground">
+									<p className="text-2xs text-muted-foreground">
 										this service
 									</p>
 								</div>

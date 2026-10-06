@@ -112,7 +112,7 @@ function ApiInventory() {
 				<div className="overflow-x-auto">
 					<table className="w-full min-w-[1000px] text-left">
 						<thead>
-							<tr className="border-b border-border bg-muted/50 text-[11px] uppercase text-muted-foreground">
+							<tr className="border-b border-border bg-muted/50 text-2xs uppercase text-muted-foreground">
 								{[
 									"API name",
 									"Kind",

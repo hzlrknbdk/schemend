@@ -117,7 +117,7 @@ function SettingsPage() {
 									className="pl-7 font-mono"
 								/>
 							</div>
-							<span className="mt-1.5 block text-[11px] text-muted-foreground">
+							<span className="mt-1.5 block text-2xs text-muted-foreground">
 								The run pauses before exceeding this amount.
 							</span>
 						</div>
@@ -141,7 +141,7 @@ function SettingsPage() {
 								<p className="text-xs font-medium">
 									Require passing tests before PR
 								</p>
-								<p className="mt-1 text-[11px] text-muted-foreground">
+								<p className="mt-1 text-2xs text-muted-foreground">
 									Otherwise mark the migration as failed.
 								</p>
 							</div>
@@ -159,7 +159,7 @@ function SettingsPage() {
 								<Bell className="mr-3 size-4 text-muted-foreground" />
 								<div>
 									<p className="text-xs font-medium">{name}</p>
-									<p className="mt-0.5 text-[11px] text-muted-foreground">
+									<p className="mt-0.5 text-2xs text-muted-foreground">
 										{note}
 									</p>
 								</div>

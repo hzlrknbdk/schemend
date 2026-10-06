@@ -171,7 +171,7 @@ function LandingPage() {
 							<a href={githubUrl} target="_blank" rel="noreferrer">
 								<Github />
 								GitHub{" "}
-								<span className="font-mono text-[10px] text-muted-foreground">
+								<span className="font-mono text-3xs text-muted-foreground">
 									★ —
 								</span>
 							</a>
@@ -628,7 +628,7 @@ function DemoPoster() {
 				<span className="size-2.5 rounded-full bg-danger" />
 				<span className="size-2.5 rounded-full bg-warning" />
 				<span className="size-2.5 rounded-full bg-success" />
-				<span className="ml-2 font-mono text-[10px] text-muted-foreground">
+				<span className="ml-2 font-mono text-3xs text-muted-foreground">
 					app.schemend.dev/impact
 				</span>
 			</div>
@@ -643,7 +643,7 @@ function DemoPoster() {
 						</div>
 					</div>
 					<div className="min-w-0 flex-1">
-						<p className="font-mono text-[9px] uppercase text-primary">
+						<p className="font-mono text-4xs uppercase text-primary">
 							Run #run_8f3a2c
 						</p>
 						<h3 className="mt-1 text-xs font-semibold sm:text-sm">
@@ -652,8 +652,8 @@ function DemoPoster() {
 						<div className="mt-4 grid h-[65%] grid-cols-[0.75fr_1fr] items-center gap-5">
 							<div className="rounded border-2 border-primary bg-background p-3">
 								<Server className="size-4 text-primary" />
-								<p className="mt-2 text-[10px] font-semibold">orders-service</p>
-								<p className="font-mono text-[8px] text-muted-foreground">
+								<p className="mt-2 text-3xs font-semibold">orders-service</p>
+								<p className="font-mono text-5xs text-muted-foreground">
 									v2.8.1 → v2.9.0
 								</p>
 							</div>
@@ -667,12 +667,12 @@ function DemoPoster() {
 										key={name}
 										className="flex items-center justify-between rounded border border-border bg-background p-2"
 									>
-										<span className="truncate text-[9px] font-medium">
+										<span className="truncate text-4xs font-medium">
 											{name}
 										</span>
 										<span
 											className={cn(
-												"font-mono text-[7px]",
+												"font-mono text-6xs",
 												status === "Review" ? "text-warning" : "text-success",
 											)}
 										>
@@ -731,7 +731,7 @@ function MigrationDiagram() {
 						key={name}
 						className="relative flex items-center gap-4 rounded-md border border-border bg-card p-4"
 					>
-						<span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted font-mono text-[10px]">
+						<span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted font-mono text-3xs">
 							{language === "TypeScript"
 								? "TS"
 								: language === "Java"
@@ -740,7 +740,7 @@ function MigrationDiagram() {
 						</span>
 						<div className="min-w-0">
 							<p className="truncate text-sm font-semibold">{name}</p>
-							<p className="font-mono text-[10px] text-muted-foreground">
+							<p className="font-mono text-3xs text-muted-foreground">
 								{language}
 							</p>
 						</div>

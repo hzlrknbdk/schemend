@@ -138,7 +138,7 @@ function Impact() {
 										<p className="text-sm font-semibold group-hover:text-primary">
 											{service.service}
 										</p>
-										<span className="rounded border border-border bg-muted px-2 py-1 font-mono text-[10px]">
+										<span className="rounded border border-border bg-muted px-2 py-1 font-mono text-3xs">
 											{service.language}
 										</span>
 									</div>
@@ -174,7 +174,7 @@ function Impact() {
 					>
 						<div className="flex justify-between">
 							<Braces className="size-4 text-muted-foreground" />
-							<span className="font-mono text-[10px] text-muted-foreground">
+							<span className="font-mono text-3xs text-muted-foreground">
 								{service.confidence}
 							</span>
 						</div>

@@ -146,15 +146,15 @@ function Overview() {
 									<p className="font-mono text-sm">
 										{breakingChangeCount(run)}
 									</p>
-									<p className="text-[11px] text-muted-foreground">breaking</p>
+									<p className="text-2xs text-muted-foreground">breaking</p>
 								</div>
 								<div>
 									<p className="font-mono text-sm">{run.services.length}</p>
-									<p className="text-[11px] text-muted-foreground">services</p>
+									<p className="text-2xs text-muted-foreground">services</p>
 								</div>
 								<div className="flex flex-col items-end gap-1.5">
 									<StatusBadge status={runStatus(run)} />
-									<span className="text-[10px] text-muted-foreground">
+									<span className="text-3xs text-muted-foreground">
 										{formatDateTime(run.startedAt)}
 									</span>
 								</div>
@@ -186,7 +186,7 @@ function Overview() {
 										<p className="text-xs font-medium leading-5">
 											{event.title}
 										</p>
-										<p className="text-[11px] text-muted-foreground">
+										<p className="text-2xs text-muted-foreground">
 											{run.api} · {formatDateTime(run.startedAt)}
 										</p>
 									</div>

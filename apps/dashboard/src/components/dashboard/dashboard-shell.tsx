@@ -38,12 +38,12 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 					<span className="text-lg font-semibold tracking-normal">
 						Schemend
 					</span>
-					<span className="ml-auto rounded border border-sidebar-border px-1.5 py-0.5 font-mono text-[10px] text-sidebar-muted">
+					<span className="ml-auto rounded border border-sidebar-border px-1.5 py-0.5 font-mono text-3xs text-sidebar-muted">
 						OSS
 					</span>
 				</div>
 				<nav className="flex-1 space-y-1 p-3" aria-label="Main navigation">
-					<p className="px-3 pb-2 pt-3 text-[10px] font-semibold uppercase text-sidebar-muted">
+					<p className="px-3 pb-2 pt-3 text-3xs font-semibold uppercase text-sidebar-muted">
 						Workspace
 					</p>
 					{navigation.map((item) => {
@@ -89,7 +89,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 						>
 							<Github className="size-4" />
 						</a>
-						<span className="font-mono text-[10px] text-sidebar-muted">
+						<span className="font-mono text-3xs text-sidebar-muted">
 							v0.8.4
 						</span>
 					</div>
