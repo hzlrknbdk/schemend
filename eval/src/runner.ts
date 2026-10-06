@@ -21,7 +21,8 @@ export async function discoverScenarios(
 ): Promise<Scenario[]> {
 	const entries = await readdir(scenariosDir, { withFileTypes: true }).catch(
 		(error: unknown) => {
-			if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+			if (error instanceof Error && "code" in error && error.code === "ENOENT")
+				return [];
 			throw error;
 		},
 	);

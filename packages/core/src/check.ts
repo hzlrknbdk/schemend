@@ -126,7 +126,7 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
 				review: [
 					{
 						file: apiConfig.schema,
-						reason: `could not read the previous schema: ${(error as Error).message}`,
+						reason: `could not read the previous schema: ${error instanceof Error ? error.message : String(error)}`,
 					},
 				],
 				confidence: "unverified",

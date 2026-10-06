@@ -33,11 +33,10 @@ export function judge({
 }: JudgeInput): Verdict {
 	const changed = result.changedFiles.length > 0;
 	const flagged = result.flags.length > 0;
+	const { flagContains } = expectation;
 	const matchedFlag =
-		expectation.flagContains !== undefined &&
-		result.flags.some((flag) =>
-			flag.reason.includes(expectation.flagContains as string),
-		);
+		flagContains !== undefined &&
+		result.flags.some((flag) => flag.reason.includes(flagContains));
 
 	switch (expectation.expected) {
 		case "fixed": {

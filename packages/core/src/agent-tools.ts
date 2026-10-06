@@ -67,7 +67,7 @@ export function buildAgentTools(
 					content: [
 						{
 							type: "text" as const,
-							text: `could not read ${relPath}: ${(error as Error).message}`,
+							text: `could not read ${relPath}: ${error instanceof Error ? error.message : String(error)}`,
 						},
 					],
 					isError: true,
