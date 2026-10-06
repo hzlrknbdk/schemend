@@ -1,41 +1,6 @@
 @import "tailwindcss" source(none);
 @import "tw-animate-css";
 @import "@schemend/ui/theme.css";
+@import "@schemend/ui/base.css";
 @source "../src";
 @source "../../../packages/ui/src";
-
-@layer base {
-	* {
-		border-color: var(--color-border);
-	}
-	html {
-		scroll-behavior: smooth;
-	}
-	body {
-		margin: 0;
-		background-color: var(--color-background);
-		color: var(--color-foreground);
-		font-family: var(--font-sans);
-		letter-spacing: 0;
-	}
-	button,
-	a {
-		outline-color: var(--color-ring);
-	}
-}
-
-@media (prefers-reduced-motion: no-preference) {
-	.migration-pulse {
-		animation: migration-pulse 2.4s ease-in-out infinite;
-	}
-}
-
-@keyframes migration-pulse {
-	0%,
-	100% {
-		opacity: 0.25;
-	}
-	50% {
-		opacity: 1;
-	}
-}
