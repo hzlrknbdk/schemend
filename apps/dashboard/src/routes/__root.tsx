@@ -97,7 +97,11 @@ export const Route = createRootRouteWithContext<{ repository: Repository }>()({
 	errorComponent: ErrorComponent,
 });
 
-function RootShell({ children }: { children: ReactNode }) {
+interface RootShellProps {
+	children: ReactNode;
+}
+
+function RootShell({ children }: RootShellProps) {
 	return (
 		<html lang="en">
 			<head>
