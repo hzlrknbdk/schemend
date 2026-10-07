@@ -5,3 +5,9 @@ dist
 .env
 .env.local
 *.log
+
+docs/conventions.md
+DECISIONS.md
+.changeset/README.md
+apps/dashboard/README.md
+apps/landing/README.md
