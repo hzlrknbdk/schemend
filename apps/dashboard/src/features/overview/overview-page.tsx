@@ -13,6 +13,7 @@ import { Section } from "@/components/dashboard/section";
 import { formatDateTime } from "@/lib/format";
 import {
 	breakingChangeCount,
+	runId,
 	runStatus,
 	runStatusTone,
 } from "@/lib/run-status";
@@ -119,8 +120,9 @@ export function OverviewPage({ runs }: OverviewPageProps) {
 					<div className="divide-y divide-border">
 						{recentRuns.map((run) => (
 							<Link
-								key={`${run.api}-${run.startedAt}`}
+								key={runId(run)}
 								to={run.api === "orders-service" ? "/impact" : "/runs"}
+								search={run.api === "orders-service" ? { run: runId(run) } : {}}
 								className="grid grid-cols-[minmax(0,1fr)_88px_88px_120px] items-center gap-4 px-5 py-4 transition-colors hover:bg-muted/50"
 							>
 								<div>

@@ -1,5 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, notFound } from "@tanstack/react-router";
+import { z } from "zod";
 import { ImpactPage } from "@/features/impact/impact-page";
+import { runId } from "@/lib/run-status";
+
+const searchSchema = z.object({
+	run: z.string().optional().catch(undefined),
+});
 
 export const Route = createFileRoute("/impact")({
 	head: () => ({
@@ -11,11 +17,23 @@ export const Route = createFileRoute("/impact")({
 			},
 		],
 	}),
-	loader: ({ context }) => context.repository.listRuns(),
+	validateSearch: searchSchema,
+	loaderDeps: ({ search }) => ({ run: search.run }),
+	loader: async ({ context, deps }) => {
+		const runs = await context.repository.listRuns();
+		const sorted = [...runs].sort((a, b) =>
+			b.startedAt.localeCompare(a.startedAt),
+		);
+		const run = deps.run
+			? sorted.find((candidate) => runId(candidate) === deps.run)
+			: sorted[0];
+		if (deps.run && !run) throw notFound();
+		return { run };
+	},
 	component: ImpactRoute,
 });
 
 function ImpactRoute() {
-	const runs = Route.useLoaderData();
-	return <ImpactPage runs={runs} />;
+	const { run } = Route.useLoaderData();
+	return <ImpactPage run={run} />;
 }

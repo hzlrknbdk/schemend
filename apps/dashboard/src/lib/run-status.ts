@@ -20,6 +20,11 @@ export const runStatusTone: Record<RunStatus, Tone> = {
 	Stopped: "warning",
 };
 
+/** `@schemend/core` has no run id field; api+startedAt is the stable, already-unique pair every list here keys by. */
+export function runId(run: RunReport): string {
+	return `${run.api}-${run.startedAt}`;
+}
+
 export function breakingChangeCount(run: RunReport): number {
 	return run.changes.filter((change) => change.severity === "breaking").length;
 }

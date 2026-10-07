@@ -6,7 +6,6 @@ import {
 	ExternalLink,
 	GitBranch,
 } from "lucide-react";
-import { useState } from "react";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -17,7 +16,9 @@ import type { CheckResult, RunReport } from "@/repository";
 import { parseUnifiedDiff } from "./lib/diff";
 
 export interface MigrationPageProps {
-	runs: RunReport[];
+	run: RunReport | undefined;
+	selectedFile: string | undefined;
+	onSelectFile: (path: string) => void;
 }
 
 const checkStatusClasses: Record<CheckResult["status"], string> = {
@@ -26,13 +27,14 @@ const checkStatusClasses: Record<CheckResult["status"], string> = {
 	skipped: "text-muted-foreground",
 };
 
-export function MigrationPage({ runs }: MigrationPageProps) {
-	const run =
-		runs.find((candidate) => candidate.api === "orders-service") ?? runs[0];
+export function MigrationPage({
+	run,
+	selectedFile,
+	onSelectFile,
+}: MigrationPageProps) {
 	const service =
 		run?.services.find((candidate) => candidate.service === "checkout-web") ??
 		run?.services[0];
-	const [selectedFile, setSelectedFile] = useState(0);
 
 	if (!run || !service) {
 		return (
@@ -46,7 +48,11 @@ export function MigrationPage({ runs }: MigrationPageProps) {
 	}
 
 	const diffFiles = service.diff ? parseUnifiedDiff(service.diff) : [];
-	const selectedDiff = diffFiles[selectedFile];
+	const selectedIndex = Math.max(
+		0,
+		diffFiles.findIndex((file) => file.path === selectedFile),
+	);
+	const selectedDiff = diffFiles[selectedIndex];
 
 	return (
 		<DashboardShell>
@@ -105,10 +111,10 @@ export function MigrationPage({ runs }: MigrationPageProps) {
 									<button
 										key={file.path}
 										type="button"
-										onClick={() => setSelectedFile(i)}
+										onClick={() => onSelectFile(file.path)}
 										className={cn(
 											"border-r border-border px-4 py-3 font-mono text-2xs text-muted-foreground",
-											i === selectedFile &&
+											i === selectedIndex &&
 												"bg-card text-foreground shadow-[inset_0_-2px_0_var(--primary)]",
 										)}
 									>

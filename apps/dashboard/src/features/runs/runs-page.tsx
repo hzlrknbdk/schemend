@@ -5,7 +5,12 @@ import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Section } from "@/components/dashboard/section";
 import { formatCost, formatDateTime, formatDuration } from "@/lib/format";
-import { runStatus, runStatusTone, triggerLabel } from "@/lib/run-status";
+import {
+	runId,
+	runStatus,
+	runStatusTone,
+	triggerLabel,
+} from "@/lib/run-status";
 import type { RunReport } from "@/repository";
 
 export interface RunsPageProps {
@@ -53,7 +58,7 @@ export function RunsPage({ runs: unsortedRuns }: RunsPageProps) {
 						<tbody>
 							{runs.map((run) => (
 								<tr
-									key={`${run.api}-${run.startedAt}`}
+									key={runId(run)}
 									className="border-b border-border last:border-0 hover:bg-muted/40"
 								>
 									<td className="px-5 py-4 font-mono text-xs text-muted-foreground">
@@ -83,6 +88,7 @@ export function RunsPage({ runs: unsortedRuns }: RunsPageProps) {
 											to={
 												run.api === "orders-service" ? "/impact" : "/migration"
 											}
+											search={{ run: runId(run) }}
 											aria-label={`View ${run.api} run`}
 											className="text-muted-foreground hover:text-primary"
 										>

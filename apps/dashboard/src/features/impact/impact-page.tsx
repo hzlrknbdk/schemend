@@ -13,15 +13,14 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Section } from "@/components/dashboard/section";
 import { formatDateTime } from "@/lib/format";
+import { runId } from "@/lib/run-status";
 import type { RunReport } from "@/repository";
 
 export interface ImpactPageProps {
-	runs: RunReport[];
+	run: RunReport | undefined;
 }
 
-export function ImpactPage({ runs }: ImpactPageProps) {
-	const run =
-		runs.find((candidate) => candidate.api === "orders-service") ?? runs[0];
+export function ImpactPage({ run }: ImpactPageProps) {
 	if (!run) {
 		return (
 			<DashboardShell>
@@ -123,7 +122,7 @@ export function ImpactPage({ runs }: ImpactPageProps) {
 									asChild
 									className="group relative p-4 transition-all hover:border-primary/40 hover:shadow-sm before:absolute before:-left-8 before:top-1/2 before:h-px before:w-8 before:bg-border"
 								>
-									<Link to="/migration">
+									<Link to="/migration" search={{ run: runId(run) }}>
 										<div className="flex items-start justify-between">
 											<p className="text-sm font-semibold group-hover:text-primary">
 												{service.service}
@@ -165,7 +164,7 @@ export function ImpactPage({ runs }: ImpactPageProps) {
 						asChild
 						className="p-4 hover:border-primary/40"
 					>
-						<Link to="/migration">
+						<Link to="/migration" search={{ run: runId(run) }}>
 							<div className="flex justify-between">
 								<Braces className="size-4 text-muted-foreground" />
 								<span className="font-mono text-2xs text-muted-foreground">
