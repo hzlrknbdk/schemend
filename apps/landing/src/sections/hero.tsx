@@ -10,7 +10,7 @@ function DemoPoster() {
 				<span className="size-2.5 rounded-full bg-danger" />
 				<span className="size-2.5 rounded-full bg-warning" />
 				<span className="size-2.5 rounded-full bg-success" />
-				<span className="ml-2 font-mono text-3xs text-muted-foreground">
+				<span className="ml-2 font-mono text-4xs text-muted-foreground">
 					app.schemend.dev/impact
 				</span>
 			</div>
@@ -34,8 +34,8 @@ function DemoPoster() {
 						<div className="mt-4 grid h-[65%] grid-cols-[0.75fr_1fr] items-center gap-5">
 							<div className="rounded border-2 border-primary bg-background p-3">
 								<Server className="size-4 text-primary" />
-								<p className="mt-2 text-3xs font-semibold">orders-service</p>
-								<p className="font-mono text-5xs text-muted-foreground">
+								<p className="mt-2 text-4xs font-semibold">orders-service</p>
+								<p className="font-mono text-4xs text-muted-foreground">
 									v2.8.1 → v2.9.0
 								</p>
 							</div>
@@ -54,7 +54,7 @@ function DemoPoster() {
 										</span>
 										<span
 											className={cn(
-												"font-mono text-6xs",
+												"font-mono text-4xs",
 												status === "Review" ? "text-warning" : "text-success",
 											)}
 										>

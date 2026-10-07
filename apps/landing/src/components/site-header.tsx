@@ -77,7 +77,7 @@ export function SiteHeader() {
 						<a href={githubUrl} target="_blank" rel="noreferrer">
 							<Github />
 							GitHub{" "}
-							<span className="font-mono text-3xs text-muted-foreground">
+							<span className="font-mono text-2xs text-muted-foreground">
 								★ —
 							</span>
 						</a>

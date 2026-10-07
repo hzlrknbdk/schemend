@@ -145,7 +145,7 @@ export function OverviewPage({ runs }: OverviewPageProps) {
 										tone={runStatusTone[runStatus(run)]}
 										label={runStatus(run)}
 									/>
-									<span className="text-3xs text-muted-foreground">
+									<span className="text-2xs text-muted-foreground">
 										{formatDateTime(run.startedAt)}
 									</span>
 								</div>

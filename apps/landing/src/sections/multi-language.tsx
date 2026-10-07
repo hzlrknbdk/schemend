@@ -34,7 +34,7 @@ function MigrationDiagram() {
 						key={name}
 						className="relative flex items-center gap-4 rounded-md border border-border bg-card p-4"
 					>
-						<span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted font-mono text-3xs">
+						<span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted font-mono text-2xs">
 							{language === "TypeScript"
 								? "TS"
 								: language === "Java"
@@ -43,7 +43,7 @@ function MigrationDiagram() {
 						</span>
 						<div className="min-w-0">
 							<p className="truncate text-sm font-semibold">{name}</p>
-							<p className="font-mono text-3xs text-muted-foreground">
+							<p className="font-mono text-2xs text-muted-foreground">
 								{language}
 							</p>
 						</div>

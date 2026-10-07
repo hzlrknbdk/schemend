@@ -128,7 +128,7 @@ export function ImpactPage({ runs }: ImpactPageProps) {
 											<p className="text-sm font-semibold group-hover:text-primary">
 												{service.service}
 											</p>
-											<Chip className="font-mono text-3xs">
+											<Chip className="font-mono text-2xs">
 												{service.language}
 											</Chip>
 										</div>
@@ -168,7 +168,7 @@ export function ImpactPage({ runs }: ImpactPageProps) {
 						<Link to="/migration">
 							<div className="flex justify-between">
 								<Braces className="size-4 text-muted-foreground" />
-								<span className="font-mono text-3xs text-muted-foreground">
+								<span className="font-mono text-2xs text-muted-foreground">
 									{service.confidence}
 								</span>
 							</div>
