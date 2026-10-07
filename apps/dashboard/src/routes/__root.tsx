@@ -1,3 +1,4 @@
+import { themeInitScript } from "@schemend/ui";
 import {
 	createRootRouteWithContext,
 	type ErrorComponentProps,
@@ -105,6 +106,8 @@ function RootShell({ children }: RootShellProps) {
 	return (
 		<html lang="en">
 			<head>
+				{/* biome-ignore lint/security/noDangerouslySetInnerHtml: static script we authored, no user input */}
+				<script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
 				<HeadContent />
 			</head>
 			<body>

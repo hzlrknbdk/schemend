@@ -1,4 +1,4 @@
-import { cn, StatusDot } from "@schemend/ui";
+import { cn, StatusDot, ThemeToggle } from "@schemend/ui";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
 	Activity,
@@ -86,15 +86,18 @@ export function DashboardShell({ children }: DashboardShellProps) {
 						<span aria-hidden="true">Agent operational</span>
 					</div>
 					<div className="flex items-center justify-between">
-						<a
-							href="https://github.com/hzlrknbdk/schemend"
-							target="_blank"
-							rel="noreferrer"
-							className="text-sidebar-muted hover:text-sidebar-foreground"
-							aria-label="GitHub"
-						>
-							<Github className="size-4" />
-						</a>
+						<div className="flex items-center gap-1">
+							<a
+								href="https://github.com/hzlrknbdk/schemend"
+								target="_blank"
+								rel="noreferrer"
+								className="text-sidebar-muted hover:text-sidebar-foreground"
+								aria-label="GitHub"
+							>
+								<Github className="size-4" />
+							</a>
+							<ThemeToggle className="size-7 text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
+						</div>
 						<span className="font-mono text-2xs text-sidebar-muted">
 							v0.8.4
 						</span>

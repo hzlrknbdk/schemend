@@ -1,7 +1,6 @@
-import { Button } from "@schemend/ui";
+import { Button, ThemeToggle } from "@schemend/ui";
 import { Link } from "@tanstack/react-router";
-import { Cable, Github, Menu, Moon, Sun } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Cable, Github, Menu } from "lucide-react";
 import {
 	Sheet,
 	SheetClose,
@@ -26,28 +25,6 @@ function Brand() {
 			</span>
 			<span className="text-lg">Schemend</span>
 		</Link>
-	);
-}
-
-function ThemeToggle() {
-	const [isDark, setIsDark] = useState(false);
-	useEffect(() => {
-		setIsDark(document.documentElement.classList.contains("dark"));
-	}, []);
-	const toggle = () => {
-		const next = !isDark;
-		setIsDark(next);
-		document.documentElement.classList.toggle("dark", next);
-	};
-	return (
-		<Button
-			variant="ghost"
-			size="icon"
-			onClick={toggle}
-			aria-label={isDark ? "Use light mode" : "Use dark mode"}
-		>
-			{isDark ? <Sun /> : <Moon />}
-		</Button>
 	);
 }
 
