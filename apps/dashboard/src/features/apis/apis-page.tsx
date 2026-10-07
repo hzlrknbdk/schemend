@@ -1,6 +1,6 @@
 import { Button, Chip, cn, StatusBadge, type Tone } from "@schemend/ui";
 import { ArrowUpDown, Search, SlidersHorizontal } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Section } from "@/components/dashboard/section";
@@ -14,12 +14,18 @@ import {
 } from "@/lib/run-status";
 import type { ApiEntry, RunReport } from "@/repository";
 
+export const kinds = ["All kinds", "internal", "external"] as const;
+
+export type ApiKindFilter = (typeof kinds)[number];
+
 export interface ApisPageProps {
 	apis: ApiEntry[];
 	runs: RunReport[];
+	query: string;
+	kind: ApiKindFilter;
+	onQueryChange: (value: string) => void;
+	onKindChange: (value: ApiKindFilter) => void;
 }
-
-const kinds = ["All kinds", "internal", "external"] as const;
 
 type ApiStatus = RunStatus | "Not yet checked";
 
@@ -43,10 +49,14 @@ function formatSource(source: ApiEntry["source"]): string {
 	}
 }
 
-export function ApisPage({ apis, runs }: ApisPageProps) {
-	const [query, setQuery] = useState("");
-	const [kind, setKind] = useState<string>("All kinds");
-
+export function ApisPage({
+	apis,
+	runs,
+	query,
+	kind,
+	onQueryChange,
+	onKindChange,
+}: ApisPageProps) {
 	const rows = useMemo(
 		() =>
 			apis.map((api) => {
@@ -87,7 +97,7 @@ export function ApisPage({ apis, runs }: ApisPageProps) {
 					<Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
 					<Input
 						value={query}
-						onChange={(e) => setQuery(e.target.value)}
+						onChange={(e) => onQueryChange(e.target.value)}
 						placeholder="Search APIs..."
 						className="pl-9"
 					/>
@@ -98,7 +108,7 @@ export function ApisPage({ apis, runs }: ApisPageProps) {
 							key={item}
 							size="sm"
 							variant={kind === item ? "default" : "outline"}
-							onClick={() => setKind(item)}
+							onClick={() => onKindChange(item)}
 						>
 							{item}
 						</Button>
