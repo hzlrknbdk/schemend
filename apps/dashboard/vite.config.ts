@@ -33,6 +33,13 @@ export default defineConfig(({ mode }) => {
 				prerender: {
 					enabled: env.VITE_SCHEMEND_MODE !== "local",
 					crawlLinks: true,
+					// Query-string variants of an already-prerendered route (e.g. /impact?run=...)
+					// serve the same static index.html on any static host — the query string never
+					// affects file resolution, only client-side hydration does. Also works around an
+					// upstream bug: @tanstack/start-plugin-core's crawler appends a trailing slash
+					// after the query string instead of before it, producing a 404 for any crawled
+					// link that has a search param.
+					filter: (page) => !page.path.includes("?"),
 				},
 			}),
 			viteReact(),
