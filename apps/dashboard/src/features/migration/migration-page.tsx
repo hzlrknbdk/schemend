@@ -19,6 +19,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { Section } from "@/components/dashboard/section";
 import { formatCost } from "@/lib/format";
 import { runStatusTone } from "@/lib/run-status";
+import { isSafeUrl } from "@/lib/safe-url";
 import type { CheckResult, RunReport } from "@/repository";
 import { parseUnifiedDiff } from "./lib/diff";
 
@@ -61,6 +62,10 @@ export function MigrationPage({
 		diffFiles.findIndex((file) => file.path === selectedFile),
 	);
 	const selectedDiff = diffFiles[selectedIndex];
+	const reviewUrl =
+		service.changeRequest && isSafeUrl(service.changeRequest.url)
+			? service.changeRequest.url
+			: undefined;
 
 	return (
 		<DashboardShell>
@@ -69,13 +74,9 @@ export function MigrationPage({
 				title={service.service}
 				description={`${service.language} · ${service.changedFiles.length} file${service.changedFiles.length === 1 ? "" : "s"} changed`}
 				action={
-					service.changeRequest && (
+					reviewUrl && (
 						<Button asChild>
-							<a
-								href={service.changeRequest.url}
-								target="_blank"
-								rel="noreferrer"
-							>
+							<a href={reviewUrl} target="_blank" rel="noopener noreferrer">
 								Review on GitHub <ExternalLink />
 							</a>
 						</Button>

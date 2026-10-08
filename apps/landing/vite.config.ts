@@ -9,7 +9,7 @@ import { z } from "zod";
 // missing/invalid VITE_* value fails the build immediately instead of surfacing later as, say,
 // "https://undefined" somewhere in the UI.
 const EnvSchema = z.object({
-	VITE_DASHBOARD_URL: z.string().default("https://demo.schemend.dev"),
+	VITE_DASHBOARD_URL: z.httpUrl().default("https://demo.schemend.dev"),
 });
 
 export default defineConfig(({ mode }) => {

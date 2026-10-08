@@ -10,7 +10,7 @@ import { z } from "zod";
 // "https://undefined" somewhere in the UI.
 const EnvSchema = z.object({
 	VITE_SCHEMEND_MODE: z.enum(["demo", "local"]).default("demo"),
-	VITE_LANDING_URL: z.string().default("https://schemend.dev"),
+	VITE_LANDING_URL: z.httpUrl().default("https://schemend.dev"),
 	// Manual QA lever for MockRepository (demo mode only) — exercises error/loading/empty
 	// states that real fixture data never produces on its own. See conventions.md §11.
 	VITE_MOCK_SCENARIO: z
