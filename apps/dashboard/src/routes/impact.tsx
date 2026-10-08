@@ -1,6 +1,9 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { z } from "zod";
+import { RouteErrorState } from "@/components/dashboard/route-error-state";
+import { RunNotFoundState } from "@/components/dashboard/run-not-found-state";
 import { ImpactPage } from "@/features/impact/impact-page";
+import { ImpactPageSkeleton } from "@/features/impact/impact-page-skeleton";
 import { runId } from "@/lib/run-status";
 
 const searchSchema = z.object({
@@ -30,6 +33,9 @@ export const Route = createFileRoute("/impact")({
 		if (deps.run && !run) throw notFound();
 		return { run };
 	},
+	pendingComponent: ImpactPageSkeleton,
+	errorComponent: RouteErrorState,
+	notFoundComponent: RunNotFoundState,
 	component: ImpactRoute,
 });
 

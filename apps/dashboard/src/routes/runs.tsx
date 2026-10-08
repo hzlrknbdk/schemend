@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { RouteErrorState } from "@/components/dashboard/route-error-state";
 import { RunsPage } from "@/features/runs/runs-page";
+import { RunsPageSkeleton } from "@/features/runs/runs-page-skeleton";
 
 export const Route = createFileRoute("/runs")({
 	head: () => ({
@@ -12,6 +14,8 @@ export const Route = createFileRoute("/runs")({
 		],
 	}),
 	loader: ({ context }) => context.repository.listRuns(),
+	pendingComponent: RunsPageSkeleton,
+	errorComponent: RouteErrorState,
 	component: RunsRoute,
 });
 

@@ -1,6 +1,9 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { z } from "zod";
+import { RouteErrorState } from "@/components/dashboard/route-error-state";
+import { RunNotFoundState } from "@/components/dashboard/run-not-found-state";
 import { MigrationPage } from "@/features/migration/migration-page";
+import { MigrationPageSkeleton } from "@/features/migration/migration-page-skeleton";
 import { runId } from "@/lib/run-status";
 
 const searchSchema = z.object({
@@ -31,6 +34,9 @@ export const Route = createFileRoute("/migration")({
 		if (deps.run && !run) throw notFound();
 		return { run };
 	},
+	pendingComponent: MigrationPageSkeleton,
+	errorComponent: RouteErrorState,
+	notFoundComponent: RunNotFoundState,
 	component: MigrationRoute,
 });
 

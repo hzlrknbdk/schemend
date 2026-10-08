@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
+import { RouteErrorState } from "@/components/dashboard/route-error-state";
 import { ApisPage, kinds } from "@/features/apis/apis-page";
+import { ApisPageSkeleton } from "@/features/apis/apis-page-skeleton";
 
 const searchSchema = z.object({
 	q: z.string().optional().catch(undefined),
@@ -25,6 +27,8 @@ export const Route = createFileRoute("/apis")({
 		]);
 		return { apis, runs };
 	},
+	pendingComponent: ApisPageSkeleton,
+	errorComponent: RouteErrorState,
 	component: ApisRoute,
 });
 
