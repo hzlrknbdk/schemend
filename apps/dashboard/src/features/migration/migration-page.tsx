@@ -1,4 +1,11 @@
-import { Button, Callout, Card, cn, StatusBadge } from "@schemend/ui";
+import {
+	Button,
+	Callout,
+	Card,
+	CopyCommand,
+	cn,
+	StatusBadge,
+} from "@schemend/ui";
 import {
 	AlertTriangle,
 	Check,
@@ -41,7 +48,8 @@ export function MigrationPage({
 			<DashboardShell>
 				<EmptyState
 					title="Migration detail"
-					description="No runs recorded yet."
+					description="A run appears here once schemend detects an API change. Try it locally:"
+					action={<CopyCommand command="schemend check" />}
 				/>
 			</DashboardShell>
 		);
@@ -101,48 +109,61 @@ export function MigrationPage({
 							))}
 						</ol>
 					</Section>
-					{diffFiles.length > 0 && (
-						<Section
-							title="Code changes"
-							note={`${diffFiles.length} file${diffFiles.length === 1 ? "" : "s"} changed`}
-						>
-							<div className="flex border-b border-border bg-muted/40">
-								{diffFiles.map((file, i) => (
-									<button
-										key={file.path}
-										type="button"
-										onClick={() => onSelectFile(file.path)}
-										className={cn(
-											"border-r border-border px-4 py-3 font-mono text-2xs text-muted-foreground",
-											i === selectedIndex &&
-												"bg-card text-foreground shadow-[inset_0_-2px_0_var(--primary)]",
-										)}
-									>
-										{file.path.split("/").pop()}
-									</button>
-								))}
+					<Section
+						title="Code changes"
+						note={
+							diffFiles.length > 0
+								? `${diffFiles.length} file${diffFiles.length === 1 ? "" : "s"} changed`
+								: undefined
+						}
+					>
+						{diffFiles.length === 0 ? (
+							<div className="p-8">
+								<EmptyState
+									title="No code changes"
+									description="schemend verified this service without needing to change any files."
+								/>
 							</div>
-							<div className="overflow-hidden bg-code py-3 font-mono text-xs leading-6">
-								{selectedDiff?.lines.map((line, i) => (
-									<div
-										// biome-ignore lint/suspicious/noArrayIndexKey: static diff lines, order never changes
-										key={`${line.text}-${i}`}
-										className={cn(
-											"grid grid-cols-[42px_1fr] px-3",
-											line.type === "remove" && "bg-danger-soft text-danger",
-											line.type === "add" && "bg-success-soft text-success",
-											line.type === "context" && "text-code-foreground",
-										)}
-									>
-										<span className="select-none text-right text-muted-foreground/60">
-											{i + 1}
-										</span>
-										<pre className="pl-4">{line.text || " "}</pre>
-									</div>
-								))}
-							</div>
-						</Section>
-					)}
+						) : (
+							<>
+								<div className="flex border-b border-border bg-muted/40">
+									{diffFiles.map((file, i) => (
+										<button
+											key={file.path}
+											type="button"
+											onClick={() => onSelectFile(file.path)}
+											className={cn(
+												"border-r border-border px-4 py-3 font-mono text-2xs text-muted-foreground",
+												i === selectedIndex &&
+													"bg-card text-foreground shadow-[inset_0_-2px_0_var(--primary)]",
+											)}
+										>
+											{file.path.split("/").pop()}
+										</button>
+									))}
+								</div>
+								<div className="overflow-hidden bg-code py-3 font-mono text-xs leading-6">
+									{selectedDiff?.lines.map((line, i) => (
+										<div
+											// biome-ignore lint/suspicious/noArrayIndexKey: static diff lines, order never changes
+											key={`${line.text}-${i}`}
+											className={cn(
+												"grid grid-cols-[42px_1fr] px-3",
+												line.type === "remove" && "bg-danger-soft text-danger",
+												line.type === "add" && "bg-success-soft text-success",
+												line.type === "context" && "text-code-foreground",
+											)}
+										>
+											<span className="select-none text-right text-muted-foreground/60">
+												{i + 1}
+											</span>
+											<pre className="pl-4">{line.text || " "}</pre>
+										</div>
+									))}
+								</div>
+							</>
+						)}
+					</Section>
 				</div>
 				<div className="space-y-6">
 					<Section title="Verification">

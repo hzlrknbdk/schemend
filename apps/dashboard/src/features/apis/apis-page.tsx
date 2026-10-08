@@ -2,6 +2,7 @@ import { Button, Chip, cn, StatusBadge, type Tone } from "@schemend/ui";
 import { ArrowUpDown, Search, SlidersHorizontal } from "lucide-react";
 import { useMemo } from "react";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { EmptyState } from "@/components/dashboard/empty-state";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Section } from "@/components/dashboard/section";
 import { Input } from "@/components/ui/input";
@@ -116,72 +117,102 @@ export function ApisPage({
 				</div>
 			</div>
 			<Section
-				title={`${filtered.length} APIs`}
+				title={apis.length > 0 ? `${filtered.length} APIs` : "APIs"}
 				note="Discovered from source and evidence"
 			>
-				<div className="overflow-x-auto">
-					<table className="w-full min-w-[1000px] text-left">
-						<thead>
-							<tr className="border-b border-border bg-muted/50 text-2xs uppercase text-muted-foreground">
-								{[
-									"API name",
-									"Kind",
-									"Source",
-									"Consumers",
-									"Breaking changes",
-									"Status",
-									"Last run",
-								].map((head) => (
-									<th key={head} className="px-5 py-3 font-medium">
-										{head}
-										{head === "API name" && (
-											<ArrowUpDown className="ml-1 inline size-3" />
-										)}
-									</th>
-								))}
-							</tr>
-						</thead>
-						<tbody>
-							{filtered.map(({ api, lastRun, consumers }) => (
-								<tr
-									key={api.name}
-									className="border-b border-border last:border-0 hover:bg-muted/40"
-								>
-									<td className="px-5 py-4 text-sm font-medium">{api.name}</td>
-									<td className="px-5 py-4">
-										<Chip>{api.kind}</Chip>
-									</td>
-									<td className="px-5 py-4 font-mono text-xs text-muted-foreground">
-										{formatSource(api.source)}
-									</td>
-									<td className="px-5 py-4 font-mono text-xs">{consumers}</td>
-									<td className="px-5 py-4 font-mono text-xs">
-										{lastRun ? (
-											<span
-												className={cn(
-													breakingChangeCount(lastRun) > 0 && "text-warning",
-												)}
-											>
-												{breakingChangeCount(lastRun)}
-											</span>
-										) : (
-											"—"
-										)}
-									</td>
-									<td className="px-5 py-4">
-										<StatusBadge
-											tone={apiStatusTone[apiStatus(lastRun)]}
-											label={apiStatus(lastRun)}
-										/>
-									</td>
-									<td className="px-5 py-4 font-mono text-xs text-muted-foreground">
-										{lastRun ? formatDateTime(lastRun.startedAt) : "Never"}
-									</td>
+				{filtered.length === 0 ? (
+					<div className="p-8">
+						{apis.length === 0 ? (
+							<EmptyState
+								title="No APIs tracked yet"
+								description="Add an API to schemend.config.ts to start tracking it."
+							/>
+						) : (
+							<EmptyState
+								title="No APIs match your filters"
+								description={`No APIs match "${query}"${kind === "All kinds" ? "" : ` in ${kind}`}. Try a different search or clear your filters.`}
+								action={
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => {
+											onQueryChange("");
+											onKindChange("All kinds");
+										}}
+									>
+										Clear filters
+									</Button>
+								}
+							/>
+						)}
+					</div>
+				) : (
+					<div className="overflow-x-auto">
+						<table className="w-full min-w-[1000px] text-left">
+							<thead>
+								<tr className="border-b border-border bg-muted/50 text-2xs uppercase text-muted-foreground">
+									{[
+										"API name",
+										"Kind",
+										"Source",
+										"Consumers",
+										"Breaking changes",
+										"Status",
+										"Last run",
+									].map((head) => (
+										<th key={head} className="px-5 py-3 font-medium">
+											{head}
+											{head === "API name" && (
+												<ArrowUpDown className="ml-1 inline size-3" />
+											)}
+										</th>
+									))}
 								</tr>
-							))}
-						</tbody>
-					</table>
-				</div>
+							</thead>
+							<tbody>
+								{filtered.map(({ api, lastRun, consumers }) => (
+									<tr
+										key={api.name}
+										className="border-b border-border last:border-0 hover:bg-muted/40"
+									>
+										<td className="px-5 py-4 text-sm font-medium">
+											{api.name}
+										</td>
+										<td className="px-5 py-4">
+											<Chip>{api.kind}</Chip>
+										</td>
+										<td className="px-5 py-4 font-mono text-xs text-muted-foreground">
+											{formatSource(api.source)}
+										</td>
+										<td className="px-5 py-4 font-mono text-xs">{consumers}</td>
+										<td className="px-5 py-4 font-mono text-xs">
+											{lastRun ? (
+												<span
+													className={cn(
+														breakingChangeCount(lastRun) > 0 && "text-warning",
+													)}
+												>
+													{breakingChangeCount(lastRun)}
+												</span>
+											) : (
+												"—"
+											)}
+										</td>
+										<td className="px-5 py-4">
+											<StatusBadge
+												tone={apiStatusTone[apiStatus(lastRun)]}
+												label={apiStatus(lastRun)}
+											/>
+										</td>
+										<td className="px-5 py-4 font-mono text-xs text-muted-foreground">
+											{lastRun ? formatDateTime(lastRun.startedAt) : "Never"}
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
+				)}
 			</Section>
 		</DashboardShell>
 	);

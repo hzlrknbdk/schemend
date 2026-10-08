@@ -1,4 +1,4 @@
-import { Callout, Card, Chip, cn } from "@schemend/ui";
+import { Callout, Card, Chip, CopyCommand, cn } from "@schemend/ui";
 import { Link } from "@tanstack/react-router";
 import {
 	ArrowRight,
@@ -24,7 +24,11 @@ export function ImpactPage({ run }: ImpactPageProps) {
 	if (!run) {
 		return (
 			<DashboardShell>
-				<EmptyState title="Change impact" description="No runs recorded yet." />
+				<EmptyState
+					title="Change impact"
+					description="A run appears here once schemend detects an API change. Try it locally:"
+					action={<CopyCommand command="schemend check" />}
+				/>
 			</DashboardShell>
 		);
 	}

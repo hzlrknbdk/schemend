@@ -1,4 +1,4 @@
-import { Card, cn, StatusBadge, StatusDot } from "@schemend/ui";
+import { Card, CopyCommand, cn, StatusBadge, StatusDot } from "@schemend/ui";
 import { Link } from "@tanstack/react-router";
 import {
 	ArrowRight,
@@ -8,6 +8,7 @@ import {
 	GitPullRequest,
 } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { EmptyState } from "@/components/dashboard/empty-state";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Section } from "@/components/dashboard/section";
 import { formatDateTime } from "@/lib/format";
@@ -117,76 +118,97 @@ export function OverviewPage({ runs }: OverviewPageProps) {
 						</Link>
 					}
 				>
-					<div className="divide-y divide-border">
-						{recentRuns.map((run) => (
-							<Link
-								key={runId(run)}
-								to={run.api === "orders-service" ? "/impact" : "/runs"}
-								search={run.api === "orders-service" ? { run: runId(run) } : {}}
-								className="grid grid-cols-[minmax(0,1fr)_88px_88px_120px] items-center gap-4 px-5 py-4 transition-colors hover:bg-muted/50"
-							>
-								<div>
-									<p className="text-sm font-medium">{run.api}</p>
-									<p className="mt-1 truncate text-xs text-muted-foreground">
-										{run.changes[0]?.summary ??
-											`${run.services.length} service${run.services.length === 1 ? "" : "s"} checked`}
-									</p>
-								</div>
-								<div>
-									<p className="font-mono text-sm">
-										{breakingChangeCount(run)}
-									</p>
-									<p className="text-2xs text-muted-foreground">breaking</p>
-								</div>
-								<div>
-									<p className="font-mono text-sm">{run.services.length}</p>
-									<p className="text-2xs text-muted-foreground">services</p>
-								</div>
-								<div className="flex flex-col items-end gap-1.5">
-									<StatusBadge
-										tone={runStatusTone[runStatus(run)]}
-										label={runStatus(run)}
-									/>
-									<span className="text-2xs text-muted-foreground">
-										{formatDateTime(run.startedAt)}
-									</span>
-								</div>
-							</Link>
-						))}
-					</div>
-				</Section>
-				<Section title="Agent activity" note="Latest service outcomes">
-					<div className="px-5 py-2">
-						{activity.map(({ run, service }, index) => {
-							const event = activityEvent(service);
-							return (
-								<div
-									key={`${run.api}-${service.service}`}
-									className="relative flex gap-3 py-3.5"
+					{recentRuns.length === 0 ? (
+						<div className="p-8">
+							<EmptyState
+								title="No runs recorded yet"
+								description="A run appears here once schemend detects an API change. Try it locally:"
+								action={<CopyCommand command="schemend check" />}
+							/>
+						</div>
+					) : (
+						<div className="divide-y divide-border">
+							{recentRuns.map((run) => (
+								<Link
+									key={runId(run)}
+									to={run.api === "orders-service" ? "/impact" : "/runs"}
+									search={
+										run.api === "orders-service" ? { run: runId(run) } : {}
+									}
+									className="grid grid-cols-[minmax(0,1fr)_88px_88px_120px] items-center gap-4 px-5 py-4 transition-colors hover:bg-muted/50"
 								>
-									{index < activity.length - 1 && (
-										<span className="absolute left-[15px] top-10 h-7 w-px bg-border" />
-									)}
-									<span
-										className={cn(
-											"z-10 flex size-8 shrink-0 items-center justify-center rounded-full",
-											activityToneClasses[event.tone],
-										)}
-									>
-										<event.icon className="size-3.5" />
-									</span>
 									<div>
-										<p className="text-xs font-medium leading-5">
-											{event.title}
-										</p>
-										<p className="text-2xs text-muted-foreground">
-											{run.api} · {formatDateTime(run.startedAt)}
+										<p className="text-sm font-medium">{run.api}</p>
+										<p className="mt-1 truncate text-xs text-muted-foreground">
+											{run.changes[0]?.summary ??
+												`${run.services.length} service${run.services.length === 1 ? "" : "s"} checked`}
 										</p>
 									</div>
-								</div>
-							);
-						})}
-					</div>
+									<div>
+										<p className="font-mono text-sm">
+											{breakingChangeCount(run)}
+										</p>
+										<p className="text-2xs text-muted-foreground">breaking</p>
+									</div>
+									<div>
+										<p className="font-mono text-sm">{run.services.length}</p>
+										<p className="text-2xs text-muted-foreground">services</p>
+									</div>
+									<div className="flex flex-col items-end gap-1.5">
+										<StatusBadge
+											tone={runStatusTone[runStatus(run)]}
+											label={runStatus(run)}
+										/>
+										<span className="text-2xs text-muted-foreground">
+											{formatDateTime(run.startedAt)}
+										</span>
+									</div>
+								</Link>
+							))}
+						</div>
+					)}
+				</Section>
+				<Section title="Agent activity" note="Latest service outcomes">
+					{activity.length === 0 ? (
+						<div className="p-8">
+							<EmptyState
+								title="No activity yet"
+								description="Agent activity will appear here once a run completes."
+							/>
+						</div>
+					) : (
+						<div className="px-5 py-2">
+							{activity.map(({ run, service }, index) => {
+								const event = activityEvent(service);
+								return (
+									<div
+										key={`${run.api}-${service.service}`}
+										className="relative flex gap-3 py-3.5"
+									>
+										{index < activity.length - 1 && (
+											<span className="absolute left-[15px] top-10 h-7 w-px bg-border" />
+										)}
+										<span
+											className={cn(
+												"z-10 flex size-8 shrink-0 items-center justify-center rounded-full",
+												activityToneClasses[event.tone],
+											)}
+										>
+											<event.icon className="size-3.5" />
+										</span>
+										<div>
+											<p className="text-xs font-medium leading-5">
+												{event.title}
+											</p>
+											<p className="text-2xs text-muted-foreground">
+												{run.api} · {formatDateTime(run.startedAt)}
+											</p>
+										</div>
+									</div>
+								);
+							})}
+						</div>
+					)}
 				</Section>
 			</div>
 		</DashboardShell>
