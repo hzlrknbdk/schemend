@@ -11,6 +11,19 @@ import { z } from "zod";
 const EnvSchema = z.object({
 	VITE_SCHEMEND_MODE: z.enum(["demo", "local"]).default("demo"),
 	VITE_LANDING_URL: z.string().default("https://schemend.dev"),
+	// Manual QA lever for MockRepository (demo mode only) — exercises error/loading/empty
+	// states that real fixture data never produces on its own. See conventions.md §11.
+	VITE_MOCK_SCENARIO: z
+		.enum([
+			"default",
+			"empty",
+			"network-error",
+			"not-found-error",
+			"server-error",
+			"validation-error",
+			"slow",
+		])
+		.default("default"),
 });
 
 export default defineConfig(({ mode }) => {

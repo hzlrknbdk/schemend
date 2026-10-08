@@ -1,6 +1,14 @@
 declare const __SCHEMEND_ENV__: {
 	VITE_SCHEMEND_MODE: "demo" | "local";
 	VITE_LANDING_URL: string;
+	VITE_MOCK_SCENARIO:
+		| "default"
+		| "empty"
+		| "network-error"
+		| "not-found-error"
+		| "server-error"
+		| "validation-error"
+		| "slow";
 };
 
 /**
