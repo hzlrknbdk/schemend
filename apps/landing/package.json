@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
-		"build": "vite build",
+		"build": "vite build && node ../../scripts/inject-csp.mjs --dist dist/client --connect-src \"'self'\"",
 		"preview": "vite preview",
 		"typecheck": "tsc --noEmit"
 	},
