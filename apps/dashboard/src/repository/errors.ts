@@ -5,6 +5,7 @@ export type RepositoryErrorKind =
 	| "not-found"
 	| "server"
 	| "validation"
+	| "auth"
 	| "unknown";
 
 /**
@@ -51,6 +52,11 @@ export class ValidationError extends RepositoryError {
 	}
 }
 
+/** No access token in memory (local mode), or the server rejected it (HTTP 401). */
+export class AuthError extends RepositoryError {
+	readonly kind = "auth" as const;
+}
+
 /** Anything else — including a render error that never touched a Repository method. */
 export class UnknownRepositoryError extends RepositoryError {
 	readonly kind = "unknown" as const;
@@ -65,6 +71,7 @@ export type NormalizedError =
 	| NotFoundError
 	| ServerError
 	| ValidationError
+	| AuthError
 	| UnknownRepositoryError;
 
 /**
@@ -78,6 +85,7 @@ export function normalizeError(error: unknown): NormalizedError {
 		error instanceof NotFoundError ||
 		error instanceof ServerError ||
 		error instanceof ValidationError ||
+		error instanceof AuthError ||
 		error instanceof UnknownRepositoryError
 	) {
 		return error;
@@ -107,6 +115,7 @@ export const repositoryErrorSerializationAdapter = createSerializationAdapter({
 		value instanceof NotFoundError ||
 		value instanceof ServerError ||
 		value instanceof ValidationError ||
+		value instanceof AuthError ||
 		value instanceof UnknownRepositoryError,
 	toSerializable: (error): SerializedRepositoryError => {
 		switch (error.kind) {
@@ -124,6 +133,7 @@ export const repositoryErrorSerializationAdapter = createSerializationAdapter({
 				};
 			case "network":
 			case "not-found":
+			case "auth":
 			case "unknown":
 				return { kind: error.kind, message: error.message };
 			default:
@@ -140,6 +150,8 @@ export const repositoryErrorSerializationAdapter = createSerializationAdapter({
 				return new ServerError(data.message, data.status ?? 0);
 			case "validation":
 				return new ValidationError(data.message, data.detail ?? "");
+			case "auth":
+				return new AuthError(data.message);
 			case "unknown":
 				return new UnknownRepositoryError(data.message);
 			default:

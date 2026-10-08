@@ -39,6 +39,12 @@ function describeError(error: NormalizedError): ErrorCopy {
 				detail: error.detail,
 				canRetry: false,
 			};
+		case "auth":
+			return {
+				title: "Access token missing or rejected",
+				description: error.message,
+				canRetry: false,
+			};
 		case "unknown":
 			return {
 				title: "Something went wrong",
