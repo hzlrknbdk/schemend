@@ -13,7 +13,7 @@ export function SiteFooter() {
 					<a
 						href="https://www.npmjs.com"
 						target="_blank"
-						rel="noreferrer"
+						rel="noopener noreferrer"
 						className="hover:text-sidebar-foreground"
 					>
 						npm
@@ -21,7 +21,7 @@ export function SiteFooter() {
 					<a
 						href={githubUrl}
 						target="_blank"
-						rel="noreferrer"
+						rel="noopener noreferrer"
 						className="hover:text-sidebar-foreground"
 					>
 						GitHub

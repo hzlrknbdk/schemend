@@ -15,7 +15,7 @@ export function Cta() {
 				</p>
 				<div className="mt-8 flex flex-wrap gap-3">
 					<Button asChild size="lg">
-						<a href={dashboardUrl} target="_blank" rel="noreferrer">
+						<a href={dashboardUrl} target="_blank" rel="noopener noreferrer">
 							Try the live demo <ArrowRight />
 						</a>
 					</Button>
@@ -25,7 +25,7 @@ export function Cta() {
 						variant="outline"
 						className="border-sidebar-border bg-sidebar text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
 					>
-						<a href={githubUrl} target="_blank" rel="noreferrer">
+						<a href={githubUrl} target="_blank" rel="noopener noreferrer">
 							<Github />
 							View on GitHub
 						</a>

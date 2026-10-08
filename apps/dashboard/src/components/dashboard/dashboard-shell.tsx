@@ -90,7 +90,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
 							<a
 								href="https://github.com/hzlrknbdk/schemend"
 								target="_blank"
-								rel="noreferrer"
+								rel="noopener noreferrer"
 								className="text-sidebar-muted hover:text-sidebar-foreground"
 								aria-label="GitHub"
 							>

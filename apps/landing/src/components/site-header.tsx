@@ -41,17 +41,17 @@ export function SiteHeader() {
 						<a href="#how-it-works">How it works</a>
 					</Button>
 					<Button asChild variant="ghost" size="sm">
-						<a href={dashboardUrl} target="_blank" rel="noreferrer">
+						<a href={dashboardUrl} target="_blank" rel="noopener noreferrer">
 							Demo
 						</a>
 					</Button>
 					<Button asChild variant="ghost" size="sm">
-						<a href={readmeUrl} target="_blank" rel="noreferrer">
+						<a href={readmeUrl} target="_blank" rel="noopener noreferrer">
 							Docs
 						</a>
 					</Button>
 					<Button asChild variant="outline" size="sm">
-						<a href={githubUrl} target="_blank" rel="noreferrer">
+						<a href={githubUrl} target="_blank" rel="noopener noreferrer">
 							<Github />
 							GitHub{" "}
 							<span className="font-mono text-2xs text-muted-foreground">
@@ -81,7 +81,11 @@ export function SiteHeader() {
 										<a
 											href={item.href}
 											target={item.href.startsWith("#") ? undefined : "_blank"}
-											rel={item.href.startsWith("#") ? undefined : "noreferrer"}
+											rel={
+												item.href.startsWith("#")
+													? undefined
+													: "noopener noreferrer"
+											}
 											className="rounded-md px-3 py-3 text-sm font-medium hover:bg-muted"
 										>
 											{item.label}
@@ -89,7 +93,7 @@ export function SiteHeader() {
 									</SheetClose>
 								))}
 								<Button asChild className="mt-3">
-									<a href={githubUrl} target="_blank" rel="noreferrer">
+									<a href={githubUrl} target="_blank" rel="noopener noreferrer">
 										<Github />
 										GitHub
 									</a>

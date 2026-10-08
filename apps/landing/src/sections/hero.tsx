@@ -69,7 +69,7 @@ function DemoPoster() {
 			<a
 				href={dashboardUrl}
 				target="_blank"
-				rel="noreferrer"
+				rel="noopener noreferrer"
 				aria-label="Open impact demo"
 				className="absolute inset-0 flex items-center justify-center bg-foreground/0 transition-colors hover:bg-foreground/5"
 			>
@@ -99,12 +99,12 @@ export function Hero() {
 					</p>
 					<div className="mt-8 flex flex-wrap gap-3">
 						<Button asChild size="lg">
-							<a href={dashboardUrl} target="_blank" rel="noreferrer">
+							<a href={dashboardUrl} target="_blank" rel="noopener noreferrer">
 								Try the live demo <ArrowRight />
 							</a>
 						</Button>
 						<Button asChild size="lg" variant="outline">
-							<a href={githubUrl} target="_blank" rel="noreferrer">
+							<a href={githubUrl} target="_blank" rel="noopener noreferrer">
 								<Github />
 								View on GitHub
 							</a>

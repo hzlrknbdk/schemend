@@ -32,7 +32,7 @@ export function Evaluation() {
 					<a
 						href={`${githubUrl}/tree/main/eval`}
 						target="_blank"
-						rel="noreferrer"
+						rel="noopener noreferrer"
 						className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
 					>
 						See the full evaluation <ExternalLink className="size-3.5" />
