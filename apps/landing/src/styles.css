@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "@schemend/ui/theme.css";
 @import "@schemend/ui/base.css";
+@import "@schemend/ui/fonts.css";
 @source "../src";
 @source "../../../packages/ui/src";
 
