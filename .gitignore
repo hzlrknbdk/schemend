@@ -7,6 +7,7 @@ dist
 *.log
 
 docs/conventions.md
+docs/local-server-contract.md
 DECISIONS.md
 .changeset/README.md
 apps/dashboard/README.md
