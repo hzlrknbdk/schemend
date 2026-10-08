@@ -1,6 +1,6 @@
-import { Button } from "@schemend/ui";
 import { Check, Clipboard } from "lucide-react";
 import { useState } from "react";
+import { Button } from "../vendor/button";
 
 export interface CopyCommandProps {
 	command: string;

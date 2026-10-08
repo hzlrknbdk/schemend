@@ -1,6 +1,10 @@
 export { Callout, type CalloutProps } from "./components/callout";
 export { Card, type CardProps } from "./components/card";
 export { Chip, type ChipProps } from "./components/chip";
+export { CopyCommand, type CopyCommandProps } from "./components/copy-command";
+export { RootError } from "./components/root-error";
+export { RootNotFound } from "./components/root-not-found";
+export { Skeleton, type SkeletonProps } from "./components/skeleton";
 export { StatusBadge, type StatusBadgeProps } from "./components/status-badge";
 export { StatusDot, type StatusDotProps } from "./components/status-dot";
 export { ThemeToggle, type ThemeToggleProps } from "./components/theme-toggle";

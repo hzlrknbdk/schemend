@@ -1,4 +1,4 @@
-import { CopyCommand } from "@/components/copy-command";
+import { CopyCommand } from "@schemend/ui";
 import { SectionHeading } from "@/components/section-heading";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 

@@ -19,6 +19,7 @@
 		"tailwind-merge": "^3.5.0"
 	},
 	"peerDependencies": {
+		"@tanstack/react-router": "1.170.41",
 		"react": "^19.2.0"
 	},
 	"devDependencies": {

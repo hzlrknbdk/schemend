@@ -1,6 +1,5 @@
-import { Button, cn } from "@schemend/ui";
+import { Button, CopyCommand, cn } from "@schemend/ui";
 import { ArrowRight, Github, Play, Server } from "lucide-react";
-import { CopyCommand } from "@/components/copy-command";
 import { dashboardUrl, githubUrl } from "@/lib/links";
 
 function DemoPoster() {
