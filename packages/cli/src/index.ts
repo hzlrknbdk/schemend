@@ -82,12 +82,21 @@ program
 			const root = process.cwd();
 			const configPath = path.resolve(root, opts.config);
 
+			const abortController = new AbortController();
+			const onSigint = () => abortController.abort();
+			process.on("SIGINT", onSigint);
+
 			const kind = selectRenderer({
 				json: Boolean(opts.json),
 				isTTY: Boolean(process.stdout.isTTY),
 				isCi: Boolean(process.env.CI),
 			});
-			const renderer = createRenderer(kind);
+			const renderer = createRenderer(kind, {
+				productName: "schemend",
+				version: VERSION,
+				consumer: path.basename(root),
+				onCancel: () => abortController.abort(),
+			});
 			const recorder = opts.recordEvents
 				? createEventRecorder(path.resolve(root, opts.recordEvents))
 				: undefined;
@@ -99,6 +108,7 @@ program
 					root,
 					exec: realExec,
 					adapters: [typescriptAdapter],
+					abortController,
 					onEvent: (event) => {
 						renderer.onEvent(event);
 						recorder?.onEvent(event);
@@ -117,6 +127,8 @@ program
 				}
 				throw error;
 			} finally {
+				process.off("SIGINT", onSigint);
+				await renderer.stop?.();
 				await recorder?.close();
 			}
 		},
