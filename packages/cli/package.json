@@ -1,32 +1,32 @@
 {
-	"name": "@schemend/cli",
-	"version": "0.0.0",
-	"type": "module",
-	"license": "MIT",
-	"bin": {
-		"schemend": "./dist/index.mjs"
-	},
-	"files": [
-		"dist"
-	],
-	"scripts": {
-		"build": "tsdown",
-		"dev": "tsdown --watch",
-		"dev:replay": "tsx src/dev/replay-fixture.ts",
-		"typecheck": "tsc --noEmit",
-		"test": "vitest run --passWithNoTests"
-	},
-	"dependencies": {
-		"@clack/prompts": "^1.8.1",
-		"@schemend/core": "workspace:*",
-		"@schemend/lang-typescript": "workspace:*",
-		"commander": "^15.0.0",
-		"ink": "^8.0.0",
-		"react": "^19.3.0"
-	},
-	"devDependencies": {
-		"@types/react": "^19.3.0",
-		"ink-testing-library": "^4.0.0",
-		"tsx": "^4.23.15"
-	}
+  "name": "@schemend/cli",
+  "version": "0.0.0",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "schemend": "./dist/index.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "dev:replay": "tsx src/dev/replay-fixture.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.8.1",
+    "@schemend/core": "workspace:*",
+    "@schemend/lang-typescript": "workspace:*",
+    "commander": "^15.0.0",
+    "ink": "^8.0.0",
+    "react": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "ink-testing-library": "^4.0.0",
+    "tsx": "^4.23.15"
+  }
 }

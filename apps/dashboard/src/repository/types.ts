@@ -6,13 +6,13 @@ import type { ApiEntry, RunReport } from "@schemend/core";
  * the "local" build once `schemend ui` ships a local server to read from (v1.1).
  */
 export interface Repository {
-	listRuns(): Promise<RunReport[]>;
-	listApis(): Promise<ApiEntry[]>;
+  listRuns(): Promise<RunReport[]>;
+  listApis(): Promise<ApiEntry[]>;
 }
 
 export type {
-	ApiEntry,
-	CheckResult,
-	RunReport,
-	ServiceResult,
+  ApiEntry,
+  CheckResult,
+  RunReport,
+  ServiceResult,
 } from "@schemend/core";

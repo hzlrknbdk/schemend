@@ -9,17 +9,17 @@ import { NotFoundState } from "@/components/dashboard/not-found-state";
  * get the same specific message instead of falling through to root's generic 404.
  */
 export function RunNotFoundState() {
-	return (
-		<DashboardShell>
-			<NotFoundState
-				title="Run not found"
-				description="This run doesn't exist, or the link to it is out of date."
-				action={
-					<Button asChild variant="outline" size="sm">
-						<Link to="/runs">Back to runs</Link>
-					</Button>
-				}
-			/>
-		</DashboardShell>
-	);
+  return (
+    <DashboardShell>
+      <NotFoundState
+        title="Run not found"
+        description="This run doesn't exist, or the link to it is out of date."
+        action={
+          <Button asChild variant="outline" size="sm">
+            <Link to="/runs">Back to runs</Link>
+          </Button>
+        }
+      />
+    </DashboardShell>
+  );
 }

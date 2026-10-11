@@ -1,4 +1,4 @@
 {
-	"extends": "@schemend/config/tsconfig.app.json",
-	"include": ["src/**/*.ts", "src/**/*.tsx"]
+  "extends": "@schemend/config/tsconfig.app.json",
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

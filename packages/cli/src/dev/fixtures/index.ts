@@ -6,8 +6,8 @@ import { events as successfulFix } from "./successful-fix.js";
 
 /** The four scenarios docs/PLAN.md asks the interactive UI to be developed against. */
 export const FIXTURES: Record<string, CheckEvent[]> = {
-	"successful-fix": successfulFix,
-	"self-correcting-agent": selfCorrectingAgent,
-	"budget-overrun": budgetOverrun,
-	"baseline-failure": baselineFailure,
+  "successful-fix": successfulFix,
+  "self-correcting-agent": selfCorrectingAgent,
+  "budget-overrun": budgetOverrun,
+  "baseline-failure": baselineFailure,
 };

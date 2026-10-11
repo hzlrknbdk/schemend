@@ -17,50 +17,50 @@ import { FIXTURES } from "./fixtures/index.js";
 const DELAY_MS = 150;
 
 function sleep(ms: number): Promise<void> {
-	return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function loadEvents(nameOrPath: string): Promise<CheckEvent[]> {
-	const builtIn = FIXTURES[nameOrPath];
-	if (builtIn) return builtIn;
+  const builtIn = FIXTURES[nameOrPath];
+  if (builtIn) return builtIn;
 
-	const content = await readFile(path.resolve(nameOrPath), "utf-8");
-	return content
-		.split("\n")
-		.map((line) => line.trim())
-		.filter(Boolean)
-		.map((line) => JSON.parse(line) as CheckEvent);
+  const content = await readFile(path.resolve(nameOrPath), "utf-8");
+  return content
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as CheckEvent);
 }
 
 async function main(): Promise<void> {
-	const [nameOrPath, kindArg] = process.argv.slice(2);
-	if (!nameOrPath) {
-		console.error(
-			`Usage: dev:replay <fixture-name-or-file> [interactive|plain|json]\nBuilt-in fixtures: ${Object.keys(FIXTURES).join(", ")}`,
-		);
-		process.exitCode = 1;
-		return;
-	}
+  const [nameOrPath, kindArg] = process.argv.slice(2);
+  if (!nameOrPath) {
+    console.error(
+      `Usage: dev:replay <fixture-name-or-file> [interactive|plain|json]\nBuilt-in fixtures: ${Object.keys(FIXTURES).join(", ")}`,
+    );
+    process.exitCode = 1;
+    return;
+  }
 
-	const events = await loadEvents(nameOrPath);
-	const kind: RendererKind =
-		kindArg === "plain" || kindArg === "json" ? kindArg : "interactive";
+  const events = await loadEvents(nameOrPath);
+  const kind: RendererKind =
+    kindArg === "plain" || kindArg === "json" ? kindArg : "interactive";
 
-	const renderer = createRenderer(kind, {
-		productName: "schemend",
-		version: "0.0.0-dev",
-		consumer: "checkout-web",
-		onCancel: () => {
-			console.error("\n(cancel requested - this replay doesn't stop early)");
-		},
-	});
+  const renderer = createRenderer(kind, {
+    productName: "schemend",
+    version: "0.0.0-dev",
+    consumer: "checkout-web",
+    onCancel: () => {
+      console.error("\n(cancel requested - this replay doesn't stop early)");
+    },
+  });
 
-	for (const event of events) {
-		renderer.onEvent(event);
-		await sleep(DELAY_MS);
-	}
+  for (const event of events) {
+    renderer.onEvent(event);
+    await sleep(DELAY_MS);
+  }
 
-	await renderer.stop?.();
+  await renderer.stop?.();
 }
 
 await main();

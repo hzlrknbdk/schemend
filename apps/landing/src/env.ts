@@ -1,5 +1,5 @@
 declare const __SCHEMEND_ENV__: {
-	VITE_DASHBOARD_URL: string;
+  VITE_DASHBOARD_URL: string;
 };
 
 /**

@@ -8,21 +8,21 @@ let token: string | undefined;
  * before the first HttpRepository request (see HttpRepository's constructor).
  */
 export function consumeTokenFromUrl(): void {
-	if (typeof window === "undefined") return;
-	const { hash } = window.location;
-	if (!hash.includes("token=")) return;
+  if (typeof window === "undefined") return;
+  const { hash } = window.location;
+  if (!hash.includes("token=")) return;
 
-	const match = hash.match(/(?:^#|&)token=([^&]+)/);
-	if (match?.[1]) {
-		token = decodeURIComponent(match[1]);
-	}
-	window.history.replaceState(
-		null,
-		"",
-		`${window.location.pathname}${window.location.search}`,
-	);
+  const match = hash.match(/(?:^#|&)token=([^&]+)/);
+  if (match?.[1]) {
+    token = decodeURIComponent(match[1]);
+  }
+  window.history.replaceState(
+    null,
+    "",
+    `${window.location.pathname}${window.location.search}`,
+  );
 }
 
 export function getAuthToken(): string | undefined {
-	return token;
+  return token;
 }

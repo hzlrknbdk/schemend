@@ -5,10 +5,10 @@ import type { Exec } from "./context.js";
 
 /** Thrown when `git show <ref>:<path>` fails (e.g. the file didn't exist yet at that ref). */
 export class GitRefNotFoundError extends Error {
-	constructor(ref: string, relPath: string, detail: string) {
-		super(`could not read "${relPath}" at ref "${ref}": ${detail}`);
-		this.name = "GitRefNotFoundError";
-	}
+  constructor(ref: string, relPath: string, detail: string) {
+    super(`could not read "${relPath}" at ref "${ref}": ${detail}`);
+    this.name = "GitRefNotFoundError";
+  }
 }
 
 /**
@@ -19,17 +19,17 @@ export class GitRefNotFoundError extends Error {
  * root, so this works the same whether the consumer is the whole repo or a subdirectory of it.
  */
 export async function writeFileAtRef(
-	ref: string,
-	relPath: string,
-	exec: Exec,
+  ref: string,
+  relPath: string,
+  exec: Exec,
 ): Promise<string> {
-	const result = await exec(`git show ${ref}:./${relPath}`);
-	if (result.exitCode !== 0) {
-		throw new GitRefNotFoundError(ref, relPath, result.stderr || result.stdout);
-	}
+  const result = await exec(`git show ${ref}:./${relPath}`);
+  if (result.exitCode !== 0) {
+    throw new GitRefNotFoundError(ref, relPath, result.stderr || result.stdout);
+  }
 
-	const tempDir = await mkdtemp(path.join(tmpdir(), "schemend-git-ref-"));
-	const tempFile = path.join(tempDir, path.basename(relPath));
-	await writeFile(tempFile, result.stdout);
-	return tempFile;
+  const tempDir = await mkdtemp(path.join(tmpdir(), "schemend-git-ref-"));
+  const tempFile = path.join(tempDir, path.basename(relPath));
+  await writeFile(tempFile, result.stdout);
+  return tempFile;
 }

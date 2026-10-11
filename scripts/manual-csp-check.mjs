@@ -22,86 +22,86 @@
 import { chromium } from "playwright";
 
 const targets = [
-	{ app: "landing", base: "http://localhost:4301", routes: ["/"] },
-	{
-		app: "dashboard",
-		base: "http://localhost:4302",
-		routes: ["/", "/apis", "/impact", "/migration", "/runs", "/settings"],
-	},
+  { app: "landing", base: "http://localhost:4301", routes: ["/"] },
+  {
+    app: "dashboard",
+    base: "http://localhost:4302",
+    routes: ["/", "/apis", "/impact", "/migration", "/runs", "/settings"],
+  },
 ];
 
 const browser = await chromium.launch();
 let anyViolation = false;
 
 for (const { app, base, routes } of targets) {
-	for (const route of routes) {
-		const page = await browser.newPage();
-		const violations = [];
-		await page.exposeFunction("__reportCspViolation", (detail) => {
-			violations.push(detail);
-		});
-		await page.addInitScript(() => {
-			window.addEventListener("securitypolicyviolation", (e) => {
-				window.__reportCspViolation(
-					`${e.violatedDirective}: blocked ${e.blockedURI || "(inline)"} on ${location.pathname}`,
-				);
-			});
-		});
-		page.on("pageerror", (err) => violations.push(`pageerror: ${err.message}`));
+  for (const route of routes) {
+    const page = await browser.newPage();
+    const violations = [];
+    await page.exposeFunction("__reportCspViolation", (detail) => {
+      violations.push(detail);
+    });
+    await page.addInitScript(() => {
+      window.addEventListener("securitypolicyviolation", (e) => {
+        window.__reportCspViolation(
+          `${e.violatedDirective}: blocked ${e.blockedURI || "(inline)"} on ${location.pathname}`,
+        );
+      });
+    });
+    page.on("pageerror", (err) => violations.push(`pageerror: ${err.message}`));
 
-		await page.goto(`${base}${route}`, { waitUntil: "networkidle" });
+    await page.goto(`${base}${route}`, { waitUntil: "networkidle" });
 
-		const clickAllCount = async (selector) => {
-			const count = await page
-				.locator(selector)
-				.count()
-				.catch(() => 0);
-			if (count > 0) {
-				await page
-					.locator(selector)
-					.first()
-					.click({ timeout: 1000 })
-					.catch(() => {});
-				await page.waitForTimeout(150);
-			}
-			return count;
-		};
+    const clickAllCount = async (selector) => {
+      const count = await page
+        .locator(selector)
+        .count()
+        .catch(() => 0);
+      if (count > 0) {
+        await page
+          .locator(selector)
+          .first()
+          .click({ timeout: 1000 })
+          .catch(() => {});
+        await page.waitForTimeout(150);
+      }
+      return count;
+    };
 
-		const interactions = {};
-		if (app === "landing" && route === "/") {
-			// Tabs (multi-language section), mobile nav Sheet, theme toggle.
-			interactions.tab = await clickAllCount('[role="tab"]');
-			interactions.menuButton = await clickAllCount('[aria-label="Open menu"]');
-			interactions.themeToggle = await clickAllCount(
-				'button[aria-label*="theme" i]',
-			);
-		}
-		if (app === "dashboard") {
-			interactions.themeToggle = await clickAllCount(
-				'button[aria-label*="theme" i]',
-			);
-			if (route === "/settings") {
-				// Switch, and Select (Radix Popper — sets `style` at runtime, the case that
-				// matters most for the style-src 'unsafe-inline' check).
-				interactions.switchEl = await clickAllCount('[role="switch"]');
-				interactions.combobox = await clickAllCount('[role="combobox"]');
-				await page.waitForTimeout(150);
-				interactions.option = await clickAllCount('[role="option"]');
-			}
-		}
+    const interactions = {};
+    if (app === "landing" && route === "/") {
+      // Tabs (multi-language section), mobile nav Sheet, theme toggle.
+      interactions.tab = await clickAllCount('[role="tab"]');
+      interactions.menuButton = await clickAllCount('[aria-label="Open menu"]');
+      interactions.themeToggle = await clickAllCount(
+        'button[aria-label*="theme" i]',
+      );
+    }
+    if (app === "dashboard") {
+      interactions.themeToggle = await clickAllCount(
+        'button[aria-label*="theme" i]',
+      );
+      if (route === "/settings") {
+        // Switch, and Select (Radix Popper — sets `style` at runtime, the case that
+        // matters most for the style-src 'unsafe-inline' check).
+        interactions.switchEl = await clickAllCount('[role="switch"]');
+        interactions.combobox = await clickAllCount('[role="combobox"]');
+        await page.waitForTimeout(150);
+        interactions.option = await clickAllCount('[role="option"]');
+      }
+    }
 
-		await page.waitForTimeout(250);
-		await page.close();
+    await page.waitForTimeout(250);
+    await page.close();
 
-		console.log(`${app} ${route} interactions:`, interactions);
-		if (violations.length > 0) {
-			anyViolation = true;
-			console.log(`[VIOLATION] ${app} ${route}`);
-			for (const v of violations) console.log(`  ${v}`);
-		} else {
-			console.log(`[ok] ${app} ${route}`);
-		}
-	}
+    console.log(`${app} ${route} interactions:`, interactions);
+    if (violations.length > 0) {
+      anyViolation = true;
+      console.log(`[VIOLATION] ${app} ${route}`);
+      for (const v of violations) console.log(`  ${v}`);
+    } else {
+      console.log(`[ok] ${app} ${route}`);
+    }
+  }
 }
 
 await browser.close();

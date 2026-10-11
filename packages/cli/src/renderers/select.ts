@@ -1,10 +1,10 @@
 export type RendererKind = "interactive" | "plain" | "json";
 
 export interface SelectRendererOptions {
-	/** --json was passed; always wins over the TTY/CI check. */
-	json: boolean;
-	isTTY: boolean;
-	isCi: boolean;
+  /** --json was passed; always wins over the TTY/CI check. */
+  json: boolean;
+  isTTY: boolean;
+  isCi: boolean;
 }
 
 /**
@@ -13,7 +13,7 @@ export interface SelectRendererOptions {
  * everything else gets the interactive one.
  */
 export function selectRenderer(options: SelectRendererOptions): RendererKind {
-	if (options.json) return "json";
-	if (!options.isTTY || options.isCi) return "plain";
-	return "interactive";
+  if (options.json) return "json";
+  if (!options.isTTY || options.isCi) return "plain";
+  return "interactive";
 }

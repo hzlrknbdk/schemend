@@ -1,42 +1,42 @@
 {
-	"name": "@schemend/dashboard",
-	"private": true,
-	"sideEffects": false,
-	"type": "module",
-	"scripts": {
-		"dev": "vite dev",
-		"build": "vite build && node ../../scripts/inject-csp.mjs --dist dist/client --connect-src \"'self'\"",
-		"build:local": "VITE_SCHEMEND_MODE=local vite build",
-		"preview": "vite preview",
-		"typecheck": "tsc --noEmit"
-	},
-	"overrides": {
-		"rolldown": "1.2.1"
-	},
-	"dependencies": {
-		"@radix-ui/react-select": "^2.2.6",
-		"@radix-ui/react-switch": "^1.2.6",
-		"@schemend/core": "workspace:*",
-		"@schemend/ui": "workspace:*",
-		"@tailwindcss/vite": "^4.2.1",
-		"@tanstack/react-router": "1.170.41",
-		"@tanstack/react-start": "1.168.60",
-		"@tanstack/router-plugin": "1.168.42",
-		"lucide-react": "^0.575.0",
-		"react": "^19.2.0",
-		"react-dom": "^19.2.0",
-		"tailwindcss": "^4.2.1",
-		"tw-animate-css": "^1.3.4",
-		"vite-tsconfig-paths": "^6.0.2",
-		"zod": "^4.6.5"
-	},
-	"devDependencies": {
-		"@schemend/config": "workspace:*",
-		"@types/node": "^22.16.5",
-		"@types/react": "^19.2.0",
-		"@types/react-dom": "^19.2.0",
-		"@vitejs/plugin-react": "^5.2.0",
-		"typescript": "^5.8.3",
-		"vite": "8.1.5"
-	}
+  "name": "@schemend/dashboard",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build && node ../../scripts/inject-csp.mjs --dist dist/client --connect-src \"'self'\"",
+    "build:local": "VITE_SCHEMEND_MODE=local vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "overrides": {
+    "rolldown": "1.2.1"
+  },
+  "dependencies": {
+    "@radix-ui/react-select": "^2.2.6",
+    "@radix-ui/react-switch": "^1.2.6",
+    "@schemend/core": "workspace:*",
+    "@schemend/ui": "workspace:*",
+    "@tailwindcss/vite": "^4.2.1",
+    "@tanstack/react-router": "1.170.41",
+    "@tanstack/react-start": "1.168.60",
+    "@tanstack/router-plugin": "1.168.42",
+    "lucide-react": "^0.575.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tailwindcss": "^4.2.1",
+    "tw-animate-css": "^1.3.4",
+    "vite-tsconfig-paths": "^6.0.2",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@schemend/config": "workspace:*",
+    "@types/node": "^22.16.5",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "typescript": "^5.8.3",
+    "vite": "8.1.5"
+  }
 }

@@ -5,11 +5,11 @@ import { findAffected } from "./impact.js";
 
 /** TypeScript LanguageAdapter (SPEC §4); wires together this package's individually-tested pieces. */
 export const typescriptAdapter: LanguageAdapter = {
-	id: "typescript",
-	detect,
-	discoverApis,
-	regenerateClient,
-	findAffected,
-	build,
-	test,
+  id: "typescript",
+  detect,
+  discoverApis,
+  regenerateClient,
+  findAffected,
+  build,
+  test,
 };

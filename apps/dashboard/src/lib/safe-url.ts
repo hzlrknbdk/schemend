@@ -6,9 +6,9 @@ const SAFE_PROTOCOLS = new Set(["http:", "https:"]);
  * `javascript:`, `data:`, and anything else that isn't a plain http(s) link.
  */
 export function isSafeUrl(url: string): boolean {
-	try {
-		return SAFE_PROTOCOLS.has(new URL(url).protocol);
-	} catch {
-		return false;
-	}
+  try {
+    return SAFE_PROTOCOLS.has(new URL(url).protocol);
+  } catch {
+    return false;
+  }
 }
