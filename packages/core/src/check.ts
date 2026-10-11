@@ -4,9 +4,11 @@ import { runFixAgent } from "./agent.js";
 import { Budget, BudgetExceededError } from "./budget.js";
 import type { Config } from "./config.js";
 import type { AdapterContext, Exec } from "./context.js";
+import type { CheckEvent } from "./events.js";
+import { createEventEmitter, EVENT_SCHEMA_VERSION } from "./events.js";
 import { writeFileAtRef } from "./git.js";
 import type { LanguageAdapter } from "./language-adapter.js";
-import { diffSchemas } from "./oasdiff.js";
+import { DockerUnavailableError, diffSchemas } from "./oasdiff.js";
 import type {
 	ApiChange,
 	ApiEntry,
@@ -26,11 +28,17 @@ export interface RunCheckOptions {
 	adapters: LanguageAdapter[];
 	/** git ref the "old" schema is read from (SPEC §2 step 2). Defaults to the previous commit. */
 	baseRef?: string;
-	/** Called once per step so the CLI can print progress (SPEC §9); core itself does no I/O. */
-	onStep?: (message: string) => void;
+	/** Called for every event this run produces (step/agent/check/cost/...); core does no I/O itself. */
+	onEvent?: (event: CheckEvent) => void;
+	/** Aborting this stops the run at the next checkpoint (between apis, or inside the fix agent). */
+	abortController?: AbortController;
 }
 
 const BRANCH_NAME = "schemend/update";
+
+function isCancelled(abortController: AbortController | undefined): boolean {
+	return abortController?.signal.aborted === true;
+}
 
 async function pickAdapter(
 	adapters: LanguageAdapter[],
@@ -97,7 +105,7 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
 	const ctx: AdapterContext = { root, exec };
 	const budget = new Budget(config.budgetUsd);
 	const service = path.basename(path.resolve(root));
-	const step = (message: string) => options.onStep?.(message);
+	const emit = createEventEmitter(options.onEvent);
 
 	const adapter = await pickAdapter(adapters, root);
 	if (!adapter) {
@@ -110,13 +118,37 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
 	let branchReady = false;
 	let stoppedReason: string | undefined;
 
+	emit({
+		type: "run-started",
+		eventSchemaVersion: EVENT_SCHEMA_VERSION,
+		apis: config.apis.map((apiConfig) => apiConfig.name),
+		budgetUsd: config.budgetUsd,
+	});
+
 	for (const apiConfig of config.apis) {
-		step(`${apiConfig.name}: detecting schema changes`);
+		const api = apiConfig.name;
+
+		if (isCancelled(options.abortController)) {
+			stoppedReason = "cancelled";
+			break;
+		}
+
+		const detectStartedAt = Date.now();
+		emit({ type: "step-started", api, step: "detect" });
+
 		let oldSchemaFile: string;
 		try {
 			oldSchemaFile = await writeFileAtRef(baseRef, apiConfig.schema, exec);
 		} catch (error) {
-			services.push({
+			emit({
+				type: "step-finished",
+				api,
+				step: "detect",
+				durationMs: Date.now() - detectStartedAt,
+				status: "failed",
+				reason: "schema-read-failed",
+			});
+			const result: ServiceResult = {
 				service,
 				language: adapter.id,
 				branch: "",
@@ -131,34 +163,73 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
 				],
 				confidence: "unverified",
 				costUsd: 0,
-			});
+			};
+			services.push(result);
+			emit({ type: "service-completed", api, service: result });
 			continue;
 		}
 
 		const newSchemaFile = path.resolve(root, apiConfig.schema);
 		let changes: ApiChange[];
 		try {
-			changes = await diffSchemas(oldSchemaFile, newSchemaFile, exec);
+			try {
+				changes = await diffSchemas(oldSchemaFile, newSchemaFile, exec);
+			} catch (error) {
+				if (error instanceof DockerUnavailableError) {
+					emit({
+						type: "step-finished",
+						api,
+						step: "detect",
+						durationMs: Date.now() - detectStartedAt,
+						status: "failed",
+						reason: "docker-unavailable",
+					});
+				}
+				throw error;
+			}
 		} finally {
 			await rm(path.dirname(oldSchemaFile), { recursive: true, force: true });
 		}
+
 		if (changes.length === 0) {
-			step(`${apiConfig.name}: no changes found`);
+			emit({
+				type: "step-finished",
+				api,
+				step: "detect",
+				durationMs: Date.now() - detectStartedAt,
+				status: "passed",
+			});
 			continue;
 		}
 		allChanges.push(...changes);
-		step(
-			`${apiConfig.name}: ${changes.length} change(s) found, running baseline`,
-		);
+		emit({ type: "changes-detected", api, changes });
+		emit({
+			type: "step-finished",
+			api,
+			step: "detect",
+			durationMs: Date.now() - detectStartedAt,
+			status: "passed",
+		});
 
-		const api = toApiEntry(apiConfig);
+		const apiEntry = toApiEntry(apiConfig);
 
 		// SPEC §2 step 3: baseline BEFORE anything (including regeneration) changes.
+		const baselineStartedAt = Date.now();
+		emit({ type: "step-started", api, step: "baseline" });
 		const baselineBuild = await adapter.build(ctx);
+		emit({ type: "check-result", api, check: baselineBuild });
 		const baselineTest = await adapter.test(ctx);
+		emit({ type: "check-result", api, check: baselineTest });
 		if (baselineBuild.status !== "passed" || baselineTest.status !== "passed") {
-			step(`${apiConfig.name}: baseline failed, skipping the fix`);
-			services.push({
+			emit({
+				type: "step-finished",
+				api,
+				step: "baseline",
+				durationMs: Date.now() - baselineStartedAt,
+				status: "failed",
+				reason: "baseline-failed",
+			});
+			const result: ServiceResult = {
 				service,
 				language: adapter.id,
 				branch: "",
@@ -173,8 +244,22 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
 				],
 				confidence: "unverified",
 				costUsd: 0,
-			});
+			};
+			services.push(result);
+			emit({ type: "service-completed", api, service: result });
 			continue;
+		}
+		emit({
+			type: "step-finished",
+			api,
+			step: "baseline",
+			durationMs: Date.now() - baselineStartedAt,
+			status: "passed",
+		});
+
+		if (isCancelled(options.abortController)) {
+			stoppedReason = "cancelled";
+			break;
 		}
 
 		if (!branchReady) {
@@ -183,20 +268,46 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
 		}
 
 		// SPEC §2 step 4: regenerate the client, then locate the affected code.
-		step(`${apiConfig.name}: regenerating the client`);
+		const regenerateStartedAt = Date.now();
+		emit({ type: "step-started", api, step: "regenerate" });
 		if (adapter.regenerateClient) {
-			await adapter.regenerateClient(ctx, api);
+			await adapter.regenerateClient(ctx, apiEntry);
 		}
-		step(`${apiConfig.name}: locating affected code`);
-		const affected = await adapter.findAffected(ctx, api, changes);
+		emit({
+			type: "step-finished",
+			api,
+			step: "regenerate",
+			durationMs: Date.now() - regenerateStartedAt,
+			status: "passed",
+		});
+
+		const impactStartedAt = Date.now();
+		emit({ type: "step-started", api, step: "impact" });
+		const affected = await adapter.findAffected(ctx, apiEntry, changes);
+		emit({ type: "affected-found", api, affected });
+		emit({
+			type: "step-finished",
+			api,
+			step: "impact",
+			durationMs: Date.now() - impactStartedAt,
+			status: "passed",
+		});
 
 		if (affected.length === 0) {
-			step(
-				`${apiConfig.name}: nothing affected, verifying the regenerated client`,
-			);
+			const verifyStartedAt = Date.now();
+			emit({ type: "step-started", api, step: "verify" });
 			const postBuild = await adapter.build(ctx);
+			emit({ type: "check-result", api, check: postBuild });
 			const postTest = await adapter.test(ctx);
+			emit({ type: "check-result", api, check: postTest });
 			const ok = postBuild.status === "passed" && postTest.status === "passed";
+			emit({
+				type: "step-finished",
+				api,
+				step: "verify",
+				durationMs: Date.now() - verifyStartedAt,
+				status: ok ? "passed" : "failed",
+			});
 			const review: ReviewItem[] = ok
 				? []
 				: [
@@ -207,11 +318,22 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
 								"regenerating the client",
 						},
 					];
+
+			const commitStartedAt = Date.now();
+			emit({ type: "step-started", api, step: "commit" });
 			const changedFiles = await commitAll(
 				ctx,
 				`schemend: update for ${apiConfig.name} change`,
 			);
-			services.push({
+			emit({
+				type: "step-finished",
+				api,
+				step: "commit",
+				durationMs: Date.now() - commitStartedAt,
+				status: "passed",
+			});
+
+			const result: ServiceResult = {
 				service,
 				language: adapter.id,
 				branch: changedFiles.length > 0 ? BRANCH_NAME : "",
@@ -221,20 +343,69 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
 				review,
 				confidence: confidenceFrom(postBuild, postTest),
 				costUsd: 0,
-			});
+			};
+			services.push(result);
+			emit({ type: "service-completed", api, service: result });
 			continue;
+		}
+
+		if (isCancelled(options.abortController)) {
+			const commitStartedAt = Date.now();
+			emit({ type: "step-started", api, step: "commit" });
+			const changedFiles = await commitAll(
+				ctx,
+				`schemend: update for ${apiConfig.name} change`,
+			);
+			emit({
+				type: "step-finished",
+				api,
+				step: "commit",
+				durationMs: Date.now() - commitStartedAt,
+				status: "passed",
+			});
+
+			const result: ServiceResult = {
+				service,
+				language: adapter.id,
+				branch: changedFiles.length > 0 ? BRANCH_NAME : "",
+				steps: ["detect", "baseline", "regenerate", "impact"],
+				changedFiles,
+				checks: [],
+				review: [
+					{
+						file: root,
+						reason: "cancelled before this api could be fixed",
+					},
+				],
+				confidence: "unverified",
+				costUsd: 0,
+			};
+			services.push(result);
+			emit({ type: "service-completed", api, service: result });
+			stoppedReason = "cancelled";
+			break;
 		}
 
 		try {
 			budget.assertAvailable();
 		} catch (error) {
 			if (!(error instanceof BudgetExceededError)) throw error;
-			step(`${apiConfig.name}: budget exhausted, stopping`);
+
+			const commitStartedAt = Date.now();
+			emit({ type: "step-started", api, step: "commit" });
 			const changedFiles = await commitAll(
 				ctx,
 				`schemend: update for ${apiConfig.name} change`,
 			);
-			services.push({
+			emit({
+				type: "step-finished",
+				api,
+				step: "commit",
+				durationMs: Date.now() - commitStartedAt,
+				status: "passed",
+			});
+
+			const result: ServiceResult = {
 				service,
 				language: adapter.id,
 				branch: changedFiles.length > 0 ? BRANCH_NAME : "",
@@ -249,15 +420,14 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
 				],
 				confidence: "unverified",
 				costUsd: 0,
-			});
+			};
+			services.push(result);
+			emit({ type: "service-completed", api, service: result });
 			stoppedReason = "budget exceeded";
 			break;
 		}
 
 		// SPEC §2 steps 5-6: fix, then verify.
-		step(
-			`${apiConfig.name}: ${affected.length} location(s) affected, running the fix agent`,
-		);
 		const fix = await runFixAgent({
 			ctx,
 			adapter,
@@ -265,16 +435,28 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
 			changes,
 			budget,
 			model: config.models.fix,
+			api,
+			...(options.onEvent !== undefined ? { onEvent: options.onEvent } : {}),
+			...(options.abortController !== undefined
+				? { abortController: options.abortController }
+				: {}),
 		});
+
+		const commitStartedAt = Date.now();
+		emit({ type: "step-started", api, step: "commit" });
 		const changedFiles = await commitAll(
 			ctx,
 			`schemend: update for ${apiConfig.name} change`,
 		);
-		step(
-			`${apiConfig.name}: done (${fix.confidence}, $${fix.costUsd.toFixed(2)})`,
-		);
+		emit({
+			type: "step-finished",
+			api,
+			step: "commit",
+			durationMs: Date.now() - commitStartedAt,
+			status: "passed",
+		});
 
-		services.push({
+		const result: ServiceResult = {
 			service,
 			language: adapter.id,
 			branch: changedFiles.length > 0 ? BRANCH_NAME : "",
@@ -284,15 +466,21 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
 			review: fix.review,
 			confidence: fix.confidence,
 			costUsd: fix.costUsd,
-		});
+		};
+		services.push(result);
+		emit({ type: "service-completed", api, service: result });
 
+		if (fix.review.some((item) => item.reason.includes("cancelled"))) {
+			stoppedReason = "cancelled";
+			break;
+		}
 		if (fix.review.some((item) => item.reason.includes("budget"))) {
 			stoppedReason = "budget exceeded";
 			break;
 		}
 	}
 
-	return {
+	const report: RunReport = {
 		api: config.apis.map((apiConfig) => apiConfig.name).join(", "),
 		startedAt,
 		finishedAt: new Date().toISOString(),
@@ -302,4 +490,6 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
 		spentUsd: budget.spent,
 		...(stoppedReason !== undefined ? { stoppedReason } : {}),
 	};
+	emit({ type: "run-finished", report });
+	return report;
 }

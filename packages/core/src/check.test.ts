@@ -6,6 +6,7 @@ import { runFixAgent } from "./agent.js";
 import { runCheck } from "./check.js";
 import type { Config } from "./config.js";
 import type { Exec, ExecResult } from "./context.js";
+import type { CheckEvent } from "./events.js";
 import type { LanguageAdapter } from "./language-adapter.js";
 import { diffSchemas } from "./oasdiff.js";
 import type { ApiChange, CheckResult } from "./types.js";
@@ -236,5 +237,181 @@ describe("runCheck", () => {
 				adapters: [adapter],
 			}),
 		).rejects.toThrow(/no language adapter/);
+	});
+});
+
+describe("runCheck cancellation", () => {
+	it("stops before touching the first api when already cancelled", async () => {
+		mockedDiff.mockResolvedValue([change]);
+		const abortController = new AbortController();
+		abortController.abort();
+
+		const report = await runCheck({
+			config: baseConfig(),
+			root,
+			exec: fakeExec([]),
+			adapters: [makeAdapter()],
+			abortController,
+		});
+
+		expect(mockedDiff).not.toHaveBeenCalled();
+		expect(report.services).toEqual([]);
+		expect(report.stoppedReason).toBe("cancelled");
+	});
+
+	it("commits what's already regenerated and stops when cancelled right after impact", async () => {
+		mockedDiff.mockResolvedValue([change]);
+		const abortController = new AbortController();
+		const regenerateClient = vi.fn(async () => {
+			await writeFile(path.join(root, "generated.ts"), "regenerated");
+		});
+		const adapter = makeAdapter({
+			regenerateClient,
+			findAffected: async () => {
+				abortController.abort();
+				return [
+					{ file: "src/a.ts", line: 1, changeId: change.id, snippet: "x" },
+				];
+			},
+		});
+
+		const report = await runCheck({
+			config: baseConfig(),
+			root,
+			exec: fakeExec([["generated.ts"]]),
+			adapters: [adapter],
+			abortController,
+		});
+
+		expect(mockedFixAgent).not.toHaveBeenCalled();
+		expect(report.stoppedReason).toBe("cancelled");
+		expect(report.services).toHaveLength(1);
+		expect(report.services[0]?.changedFiles).toEqual(["generated.ts"]);
+		expect(report.services[0]?.review[0]?.reason).toContain("cancelled");
+	});
+
+	it("stops with stoppedReason cancelled when the fix agent reports it was cancelled", async () => {
+		mockedDiff.mockResolvedValue([change]);
+		mockedFixAgent.mockImplementation(async () => ({
+			changedFiles: [],
+			checks: [],
+			confidence: "unverified",
+			costUsd: 0,
+			review: [{ file: root, reason: "cancelled while fixing" }],
+		}));
+		const adapter = makeAdapter({
+			findAffected: async () => [
+				{ file: "src/a.ts", line: 1, changeId: change.id, snippet: "x" },
+			],
+		});
+
+		const report = await runCheck({
+			config: baseConfig(),
+			root,
+			exec: fakeExec([[]]),
+			adapters: [adapter],
+		});
+
+		expect(report.stoppedReason).toBe("cancelled");
+	});
+});
+
+describe("runCheck events", () => {
+	it("emits run-started, a passed detect step, and run-finished when nothing changed", async () => {
+		mockedDiff.mockResolvedValue([]);
+		const events: CheckEvent[] = [];
+
+		await runCheck({
+			config: baseConfig(),
+			root,
+			exec: fakeExec([]),
+			adapters: [makeAdapter()],
+			onEvent: (event) => events.push(event),
+		});
+
+		expect(events.map((event) => event.type)).toEqual([
+			"run-started",
+			"step-started",
+			"step-finished",
+			"run-finished",
+		]);
+		expect(events[0]).toMatchObject({ type: "run-started", apis: ["orders"] });
+		expect(events[2]).toMatchObject({
+			type: "step-finished",
+			step: "detect",
+			status: "passed",
+		});
+	});
+
+	it("emits a failed baseline step and a service-completed event, tagged with the reason", async () => {
+		mockedDiff.mockResolvedValue([change]);
+		const events: CheckEvent[] = [];
+		const adapter = makeAdapter({
+			build: async () => ({ name: "build", status: "failed" }),
+		});
+
+		await runCheck({
+			config: baseConfig(),
+			root,
+			exec: fakeExec([]),
+			adapters: [adapter],
+			onEvent: (event) => events.push(event),
+		});
+
+		expect(events.map((event) => event.type)).toEqual([
+			"run-started",
+			"step-started",
+			"changes-detected",
+			"step-finished",
+			"step-started",
+			"check-result",
+			"check-result",
+			"step-finished",
+			"service-completed",
+			"run-finished",
+		]);
+		const baselineFinished = events[7];
+		expect(baselineFinished).toMatchObject({
+			type: "step-finished",
+			step: "baseline",
+			status: "failed",
+			reason: "baseline-failed",
+		});
+		for (const event of events) expect(typeof event.timestamp).toBe("string");
+	});
+
+	it("emits detect/baseline/regenerate/impact/commit steps and one service-completed when nothing needed fixing", async () => {
+		mockedDiff.mockResolvedValue([change]);
+		const events: CheckEvent[] = [];
+		const adapter = makeAdapter({
+			regenerateClient: async () => {
+				await writeFile(path.join(root, "generated.ts"), "regenerated");
+			},
+			findAffected: async () => [],
+		});
+
+		await runCheck({
+			config: baseConfig(),
+			root,
+			exec: fakeExec([["generated.ts"]]),
+			adapters: [adapter],
+			onEvent: (event) => events.push(event),
+		});
+
+		const steps = events
+			.filter((event) => event.type === "step-started")
+			.map((event) => event.step);
+		expect(steps).toEqual([
+			"detect",
+			"baseline",
+			"regenerate",
+			"impact",
+			"verify",
+			"commit",
+		]);
+		expect(
+			events.filter((event) => event.type === "service-completed"),
+		).toHaveLength(1);
+		expect(events.at(-1)?.type).toBe("run-finished");
 	});
 });

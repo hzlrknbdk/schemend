@@ -1,10 +1,11 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import { AbortError, query } from "@anthropic-ai/claude-agent-sdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runFixAgent } from "./agent.js";
 import { Budget } from "./budget.js";
+import type { CheckEvent } from "./events.js";
 import type { AffectedLocation, ApiChange, CheckResult } from "./types.js";
 
 vi.mock("@anthropic-ai/claude-agent-sdk", async (importOriginal) => {
@@ -22,6 +23,14 @@ function fakeQuery(messages: unknown[]) {
 	})() as any;
 }
 
+function fakeQueryThrowing(error: unknown) {
+	// biome-ignore lint/correctness/useYield: deliberately throws before ever yielding, to simulate the SDK's query() aborting mid-stream.
+	return (async function* () {
+		throw error;
+		// biome-ignore lint/suspicious/noExplicitAny: test double for the SDK's AsyncGenerator-shaped Query return type.
+	})() as any;
+}
+
 function resultMessage(overrides: Record<string, unknown> = {}) {
 	return {
 		type: "result",
@@ -29,6 +38,29 @@ function resultMessage(overrides: Record<string, unknown> = {}) {
 		total_cost_usd: 0.05,
 		is_error: false,
 		...overrides,
+	};
+}
+
+function assistantToolUse(id: string, name: string, input: unknown) {
+	return {
+		type: "assistant",
+		message: { content: [{ type: "tool_use", id, name, input }] },
+	};
+}
+
+function userToolResult(toolUseId: string, text: string, isError = false) {
+	return {
+		type: "user",
+		message: {
+			content: [
+				{
+					type: "tool_result",
+					tool_use_id: toolUseId,
+					content: [{ type: "text", text }],
+					is_error: isError,
+				},
+			],
+		},
 	};
 }
 
@@ -86,6 +118,7 @@ describe("runFixAgent", () => {
 			changes: [change],
 			budget,
 			model: "claude-sonnet-5",
+			api: "orders",
 		});
 
 		expect(mockedQuery).not.toHaveBeenCalled();
@@ -105,6 +138,7 @@ describe("runFixAgent", () => {
 			changes: [change],
 			budget,
 			model: "claude-sonnet-5",
+			api: "orders",
 		});
 
 		expect(mockedQuery).toHaveBeenCalledTimes(1);
@@ -135,6 +169,7 @@ describe("runFixAgent", () => {
 			changes: [change],
 			budget: new Budget(1),
 			model: "claude-sonnet-5",
+			api: "orders",
 		});
 
 		expect(result.review[0]?.reason).toContain("budget exceeded");
@@ -158,6 +193,7 @@ describe("runFixAgent", () => {
 			changes: [change],
 			budget: new Budget(1),
 			model: "claude-sonnet-5",
+			api: "orders",
 		});
 
 		expect(result.confidence).toBe("verified-by-build");
@@ -183,6 +219,7 @@ describe("runFixAgent", () => {
 			changes: [change],
 			budget: new Budget(1),
 			model: "claude-sonnet-5",
+			api: "orders",
 		});
 
 		expect(result.confidence).toBe("unverified");
@@ -198,6 +235,7 @@ describe("runFixAgent", () => {
 			changes: [change],
 			budget: new Budget(1),
 			model: "claude-sonnet-5",
+			api: "orders",
 		});
 
 		// The mocked query never actually calls edit_file, so nothing should be reported changed.
@@ -205,5 +243,230 @@ describe("runFixAgent", () => {
 		expect(
 			await readFile(path.join(root, "src/lib/shipping.ts"), "utf-8"),
 		).toBe("old content");
+	});
+});
+
+describe("runFixAgent events", () => {
+	it("parses tool_use/tool_result messages into agent-tool-call/-result events correlated by id", async () => {
+		mockedQuery.mockImplementation(() =>
+			fakeQuery([
+				assistantToolUse("tu_1", "mcp__schemend__edit_file", {
+					path: "src/lib/shipping.ts",
+					content: "new content",
+				}),
+				userToolResult("tu_1", "wrote src/lib/shipping.ts"),
+				resultMessage(),
+			]),
+		);
+		const events: CheckEvent[] = [];
+
+		await runFixAgent({
+			ctx: ctx(),
+			adapter: passingAdapter,
+			affected,
+			changes: [change],
+			budget: new Budget(1),
+			model: "claude-sonnet-5",
+			api: "orders",
+			onEvent: (event) => events.push(event),
+		});
+
+		expect(
+			events.find((event) => event.type === "agent-tool-call"),
+		).toMatchObject({
+			type: "agent-tool-call",
+			toolUseId: "tu_1",
+			tool: "edit_file",
+			file: "src/lib/shipping.ts",
+		});
+		expect(
+			events.find((event) => event.type === "agent-tool-result"),
+		).toMatchObject({
+			type: "agent-tool-result",
+			toolUseId: "tu_1",
+			tool: "edit_file",
+			status: "success",
+			file: "src/lib/shipping.ts",
+		});
+	});
+
+	it("extracts an error count and first error from a failing run_build tool result", async () => {
+		mockedQuery.mockImplementation(() =>
+			fakeQuery([
+				assistantToolUse("tu_2", "mcp__schemend__run_build", {}),
+				userToolResult(
+					"tu_2",
+					"typecheck: failed\nsrc/a.ts(3,5): error TS2345: bad\nsrc/b.ts(1,1): error TS2345: also bad",
+					true,
+				),
+				resultMessage(),
+			]),
+		);
+		const events: CheckEvent[] = [];
+
+		await runFixAgent({
+			ctx: ctx(),
+			adapter: passingAdapter,
+			affected,
+			changes: [change],
+			budget: new Budget(1),
+			model: "claude-sonnet-5",
+			api: "orders",
+			onEvent: (event) => events.push(event),
+		});
+
+		expect(
+			events.find((event) => event.type === "agent-tool-result"),
+		).toMatchObject({
+			tool: "run_build",
+			status: "error",
+			errorCount: 2,
+			firstError: expect.stringContaining("TS2345"),
+		});
+	});
+
+	it("emits step/check/cost events around the agent loop, in order", async () => {
+		mockedQuery.mockImplementation(() =>
+			fakeQuery([resultMessage({ total_cost_usd: 0.12 })]),
+		);
+		const events: CheckEvent[] = [];
+
+		await runFixAgent({
+			ctx: ctx(),
+			adapter: passingAdapter,
+			affected,
+			changes: [change],
+			budget: new Budget(1),
+			model: "claude-sonnet-5",
+			api: "orders",
+			onEvent: (event) => events.push(event),
+		});
+
+		expect(events.map((event) => event.type)).toEqual([
+			"step-started",
+			"step-finished",
+			"cost-updated",
+			"step-started",
+			"check-result",
+			"check-result",
+			"step-finished",
+		]);
+		expect(events[0]).toMatchObject({ step: "fix" });
+		expect(events[2]).toMatchObject({
+			type: "cost-updated",
+			spentUsd: expect.closeTo(0.12, 5),
+			limitUsd: 1,
+		});
+		for (const event of events) expect(typeof event.timestamp).toBe("string");
+	});
+
+	it("skips cost-updated when the budget was already exhausted (nothing new to report)", async () => {
+		const budget = new Budget(1);
+		budget.record(1);
+		const events: CheckEvent[] = [];
+
+		await runFixAgent({
+			ctx: ctx(),
+			adapter: passingAdapter,
+			affected,
+			changes: [change],
+			budget,
+			model: "claude-sonnet-5",
+			api: "orders",
+			onEvent: (event) => events.push(event),
+		});
+
+		expect(events.map((event) => event.type)).toEqual([
+			"step-started",
+			"step-finished",
+		]);
+		expect(events[1]).toMatchObject({
+			step: "fix",
+			status: "failed",
+			reason: "budget-exceeded",
+		});
+	});
+});
+
+describe("runFixAgent cancellation", () => {
+	it("returns unverified immediately when the abortController is already aborted", async () => {
+		const abortController = new AbortController();
+		abortController.abort();
+		const events: CheckEvent[] = [];
+
+		const result = await runFixAgent({
+			ctx: ctx(),
+			adapter: passingAdapter,
+			affected,
+			changes: [change],
+			budget: new Budget(1),
+			model: "claude-sonnet-5",
+			api: "orders",
+			abortController,
+			onEvent: (event) => events.push(event),
+		});
+
+		expect(mockedQuery).not.toHaveBeenCalled();
+		expect(result.confidence).toBe("unverified");
+		expect(result.review[0]?.reason).toContain("cancelled");
+		expect(events.map((event) => event.type)).toEqual([
+			"step-started",
+			"step-finished",
+		]);
+		expect(events[1]).toMatchObject({
+			step: "fix",
+			status: "failed",
+			reason: "cancelled",
+		});
+	});
+
+	it("treats an AbortError from the SDK as a clean stop and skips verify", async () => {
+		mockedQuery.mockImplementation(() => fakeQueryThrowing(new AbortError()));
+		const build = vi.fn(passingAdapter.build);
+		const test = vi.fn(passingAdapter.test);
+		const events: CheckEvent[] = [];
+
+		const result = await runFixAgent({
+			ctx: ctx(),
+			adapter: { build, test },
+			affected,
+			changes: [change],
+			budget: new Budget(1),
+			model: "claude-sonnet-5",
+			api: "orders",
+			abortController: new AbortController(),
+			onEvent: (event) => events.push(event),
+		});
+
+		expect(build).not.toHaveBeenCalled();
+		expect(test).not.toHaveBeenCalled();
+		expect(result.confidence).toBe("unverified");
+		expect(result.checks).toEqual([]);
+		expect(result.review[0]?.reason).toContain("cancelled");
+		expect(events.map((event) => event.type)).toEqual([
+			"step-started",
+			"step-finished",
+		]);
+		expect(events[1]).toMatchObject({
+			step: "fix",
+			status: "failed",
+			reason: "cancelled",
+		});
+	});
+
+	it("rethrows a non-abort error from the SDK", async () => {
+		mockedQuery.mockImplementation(() => fakeQueryThrowing(new Error("boom")));
+
+		await expect(
+			runFixAgent({
+				ctx: ctx(),
+				adapter: passingAdapter,
+				affected,
+				changes: [change],
+				budget: new Budget(1),
+				model: "claude-sonnet-5",
+				api: "orders",
+			}),
+		).rejects.toThrow("boom");
 	});
 });
