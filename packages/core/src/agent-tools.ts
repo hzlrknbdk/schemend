@@ -5,24 +5,56 @@ import {
 	type SdkMcpToolDefinition,
 	tool,
 } from "@anthropic-ai/claude-agent-sdk";
+import { createPatch, diffLines } from "diff";
 import { z } from "zod";
 import type { AdapterContext } from "./context.js";
+import {
+	type AgentToolName,
+	type CheckEvent,
+	createEventEmitter,
+} from "./events.js";
 import type { LanguageAdapter } from "./language-adapter.js";
 import type { CheckResult } from "./types.js";
 
 /** MCP server name the agent's custom tools are registered under; wire names are mcp__<this>__<tool>. */
 export const TOOL_SERVER_NAME = "schemend";
 
-export const TOOL_NAMES = [
+export const TOOL_NAMES: readonly AgentToolName[] = [
 	"read_file",
 	"edit_file",
 	"run_build",
 	"run_tests",
-] as const;
+];
 
 /** The Agent SDK exposes MCP tools under a fully-qualified wire name: mcp__<server>__<tool>. */
-export function qualifiedToolName(name: (typeof TOOL_NAMES)[number]): string {
+export function qualifiedToolName(name: AgentToolName): string {
 	return `mcp__${TOOL_SERVER_NAME}__${name}`;
+}
+
+const QUALIFIED_TO_SHORT = new Map<string, AgentToolName>(
+	TOOL_NAMES.map((name) => [qualifiedToolName(name), name]),
+);
+
+/** Reverse of qualifiedToolName; undefined for any tool name that isn't one of ours (e.g. a built-in). */
+export function shortToolName(
+	qualifiedName: string,
+): AgentToolName | undefined {
+	return QUALIFIED_TO_SHORT.get(qualifiedName);
+}
+
+/** Line-added/removed counts + a unified diff, for the file-edited event. */
+function computeDiff(
+	file: string,
+	before: string,
+	after: string,
+): { added: number; removed: number; diff: string } {
+	let added = 0;
+	let removed = 0;
+	for (const change of diffLines(before, after)) {
+		if (change.added) added += change.count ?? 0;
+		else if (change.removed) removed += change.count ?? 0;
+	}
+	return { added, removed, diff: createPatch(file, before, after) };
 }
 
 function formatCheck(result: CheckResult): string {
@@ -45,14 +77,21 @@ export interface AgentTools {
  * only within ctx.root, and edit_file refuses any path outside `affectedFiles` (SPEC §2 step 5:
  * "agent edits only affected files"). run_build/run_tests call straight through to the adapter,
  * which routes execution through ctx.exec (Docker-vs-local stays in core, per AdapterContext).
+ *
+ * `events`, when given, lets edit_file emit a file-edited event with the actual diff - the only
+ * place that has both the old and new file content in hand. The agent-tool-call/-result events
+ * for all four tools come from parsing the SDK's own message stream instead (runFixAgent), since
+ * that's the only place that sees the model's tool_use id.
  */
 export function buildAgentTools(
 	ctx: AdapterContext,
 	adapter: Pick<LanguageAdapter, "build" | "test">,
 	affectedFiles: readonly string[],
+	events?: { api: string; onEvent?: (event: CheckEvent) => void },
 ): AgentTools {
 	const allowed = new Set(affectedFiles);
 	const changedFiles = new Set<string>();
+	const emit = createEventEmitter(events?.onEvent);
 
 	const readFileTool = tool(
 		"read_file",
@@ -92,8 +131,26 @@ export function buildAgentTools(
 					isError: true,
 				};
 			}
-			await writeFile(path.join(ctx.root, relPath), content, "utf-8");
+			const absPath = path.join(ctx.root, relPath);
+			let before = "";
+			try {
+				before = await readFile(absPath, "utf-8");
+			} catch {
+				// new file: diff against empty content
+			}
+			await writeFile(absPath, content, "utf-8");
 			changedFiles.add(relPath);
+			if (events && before !== content) {
+				const { added, removed, diff } = computeDiff(relPath, before, content);
+				emit({
+					type: "file-edited",
+					api: events.api,
+					file: relPath,
+					added,
+					removed,
+					diff,
+				});
+			}
 			return { content: [{ type: "text" as const, text: `wrote ${relPath}` }] };
 		},
 	);

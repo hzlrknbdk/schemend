@@ -7,6 +7,7 @@ import {
 	qualifiedToolName,
 	TOOL_NAMES,
 } from "./agent-tools.js";
+import type { CheckEvent } from "./events.js";
 import type { CheckResult } from "./types.js";
 
 let root: string;
@@ -101,6 +102,54 @@ describe("edit_file", () => {
 		expect(result.isError).toBeFalsy();
 		expect(changedFiles).toEqual(new Set(["src/a.ts"]));
 		expect(await readFile(path.join(root, "src/a.ts"), "utf-8")).toBe("new");
+	});
+
+	it("emits a file-edited event with the diff when events are passed in", async () => {
+		await mkdir(path.join(root, "src"), { recursive: true });
+		await writeFile(path.join(root, "src/a.ts"), "line1\nline2\n");
+		const events: CheckEvent[] = [];
+		const { tools } = buildAgentTools(
+			{ root, exec: async () => ({ exitCode: 0, stdout: "", stderr: "" }) },
+			stubAdapter,
+			["src/a.ts"],
+			{ api: "orders", onEvent: (event) => events.push(event) },
+		);
+
+		await findTool(tools, "edit_file").handler(
+			{ path: "src/a.ts", content: "line1\nline2 changed\n" },
+			undefined,
+		);
+
+		expect(events).toHaveLength(1);
+		expect(events[0]).toMatchObject({
+			type: "file-edited",
+			api: "orders",
+			file: "src/a.ts",
+			added: 1,
+			removed: 1,
+		});
+		const diff = events[0]?.type === "file-edited" ? events[0].diff : undefined;
+		expect(diff).toContain("-line2");
+		expect(diff).toContain("+line2 changed");
+	});
+
+	it("does not emit a file-edited event when the new content is identical", async () => {
+		await mkdir(path.join(root, "src"), { recursive: true });
+		await writeFile(path.join(root, "src/a.ts"), "same");
+		const events: CheckEvent[] = [];
+		const { tools } = buildAgentTools(
+			{ root, exec: async () => ({ exitCode: 0, stdout: "", stderr: "" }) },
+			stubAdapter,
+			["src/a.ts"],
+			{ api: "orders", onEvent: (event) => events.push(event) },
+		);
+
+		await findTool(tools, "edit_file").handler(
+			{ path: "src/a.ts", content: "same" },
+			undefined,
+		);
+
+		expect(events).toEqual([]);
 	});
 
 	it("refuses to write a file that isn't in the affected list", async () => {
