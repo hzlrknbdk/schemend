@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import path from "node:path";
-import { intro, log, outro } from "@clack/prompts";
 import {
 	ConfigValidationError,
 	DockerUnavailableError,
@@ -12,6 +11,8 @@ import {
 import { typescriptAdapter } from "@schemend/lang-typescript";
 import { Command } from "commander";
 import { realExec } from "./exec.js";
+import { createEventRecorder } from "./record-events.js";
+import { createRenderer, selectRenderer } from "./renderers/index.js";
 
 const program = new Command()
 	.name("schemend")
@@ -68,58 +69,57 @@ program
 		"path to schemend.config.ts",
 		"schemend.config.ts",
 	)
-	.action(async (opts: { config: string }) => {
-		intro("schemend check");
-		const root = process.cwd();
-		const configPath = path.resolve(root, opts.config);
+	.option(
+		"--json",
+		"emit one JSON-encoded event per line (NDJSON) instead of human-readable output",
+	)
+	.option(
+		"--record-events <file>",
+		"also record every event as NDJSON to this file",
+	)
+	.action(
+		async (opts: { config: string; json?: boolean; recordEvents?: string }) => {
+			const root = process.cwd();
+			const configPath = path.resolve(root, opts.config);
 
-		try {
-			const config = await loadConfig(configPath);
-			const report = await runCheck({
-				config,
-				root,
-				exec: realExec,
-				adapters: [typescriptAdapter],
-				onStep: (message) => log.step(message),
+			const kind = selectRenderer({
+				json: Boolean(opts.json),
+				isTTY: Boolean(process.stdout.isTTY),
+				isCi: Boolean(process.env.CI),
 			});
+			const renderer = createRenderer(kind);
+			const recorder = opts.recordEvents
+				? createEventRecorder(path.resolve(root, opts.recordEvents))
+				: undefined;
 
-			if (report.changes.length === 0) {
-				log.info("No API changes detected.");
-			}
-			for (const service of report.services) {
-				const headline =
-					`${service.service}: ${service.confidence}` +
-					(service.branch ? ` -> ${service.branch}` : "");
-				if (service.review.length > 0) {
-					log.warn(
-						`${headline} (needs review: ${service.review
-							.map((item) => item.reason)
-							.join("; ")})`,
-					);
-				} else {
-					log.success(headline);
+			try {
+				const config = await loadConfig(configPath);
+				await runCheck({
+					config,
+					root,
+					exec: realExec,
+					adapters: [typescriptAdapter],
+					onEvent: (event) => {
+						renderer.onEvent(event);
+						recorder?.onEvent(event);
+					},
+				});
+			} catch (error) {
+				if (error instanceof DockerUnavailableError) {
+					console.error(error.message);
+					process.exitCode = 1;
+					return;
 				}
+				if (error instanceof ConfigValidationError) {
+					console.error(error.message);
+					process.exitCode = 1;
+					return;
+				}
+				throw error;
+			} finally {
+				await recorder?.close();
 			}
-
-			const budgetLine = `$${report.spentUsd.toFixed(2)} of $${report.budgetUsd.toFixed(2)} budget used`;
-			outro(
-				report.stoppedReason
-					? `${budgetLine} (stopped: ${report.stoppedReason})`
-					: budgetLine,
-			);
-		} catch (error) {
-			if (error instanceof DockerUnavailableError) {
-				log.error(error.message);
-				process.exitCode = 1;
-				return;
-			}
-			if (error instanceof ConfigValidationError) {
-				log.error(error.message);
-				process.exitCode = 1;
-				return;
-			}
-			throw error;
-		}
-	});
+		},
+	);
 
 await program.parseAsync();
