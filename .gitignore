@@ -2,6 +2,7 @@ node_modules
 dist
 .turbo
 .schemend
+.scratch
 .env
 .env.local
 *.log
