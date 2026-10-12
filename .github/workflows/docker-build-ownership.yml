@@ -19,10 +19,13 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    env:
-      DEMO_DIR: ${{ runner.temp }}/demo
     steps:
       - uses: actions/checkout@v5
+
+      # The runner context (needed for runner.temp) isn't available in a job-level `env:`
+      # block, only inside a step - so DEMO_DIR is set here and exported via $GITHUB_ENV.
+      - name: Set DEMO_DIR
+        run: echo "DEMO_DIR=${{ runner.temp }}/demo" >> "$GITHUB_ENV"
 
       - uses: pnpm/action-setup@v4
 
