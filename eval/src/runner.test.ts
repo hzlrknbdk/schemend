@@ -79,7 +79,6 @@ describe("discoverScenarios", () => {
 });
 
 describe("runScenario", () => {
-  // Always-passing check so these mustNotContain-focused tests aren't affected by it.
   const NOOP_CHECK = 'node -e "process.exit(0)"';
 
   const scenario: Scenario = {

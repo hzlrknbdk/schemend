@@ -12,7 +12,6 @@ export interface RunnerRow {
   expected: string;
   result: Verdict;
   checks?: CheckResult[];
-  /** Set only for result "error": the scenario crashed before judge() could run. */
   error?: string;
 }
 

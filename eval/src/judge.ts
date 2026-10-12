@@ -19,9 +19,7 @@ export type Verdict =
 export interface JudgeInput {
   expectation: ConsumerExpectation;
   result: SolverResult;
-  /** mustNotContain strings from the expectation that are still found on disk after the solver ran. */
   remainingMatches: string[];
-  /** checks results, if the expectation configured any. Only affects the "fixed" verdict. */
   checks?: CheckResult[];
 }
 
@@ -42,7 +40,6 @@ export function judge({
     case "fixed": {
       if (!changed) return "missed";
       if (remainingMatches.length > 0) return "wrong-fix";
-      // checks (tsc, mvn, dotnet) catch what the mustNotContain heuristic misses.
       if (checks?.some((check) => check.status === "failed"))
         return "wrong-fix";
       // flagContains on a "fixed" consumer means: fix it AND flag it (e.g. currency semantics).

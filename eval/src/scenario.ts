@@ -32,7 +32,6 @@ export const ScenarioSchema = z.object({
   real: z.boolean(),
   source: z.string(),
   ref: RefSchema,
-  // Path (relative to the source repo root) that schemaAfter gets copied onto before checks run.
   providerSchema: z.string(),
   schemaBefore: z.string(),
   schemaAfter: z.string(),

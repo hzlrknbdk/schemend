@@ -8,8 +8,6 @@ export interface CommandResult {
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
 const MAX_BUFFER_BYTES = 20 * 1024 * 1024;
-// Matches the conventional `timeout` command's exit code, so a timed-out check reads
-// the same in the report as it would on a shell.
 const TIMEOUT_EXIT_CODE = 124;
 
 // Never rejects: a non-zero exit is a normal outcome callers need to inspect

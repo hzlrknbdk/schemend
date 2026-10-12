@@ -98,8 +98,6 @@ describe("runScenarioInWorktree", () => {
       return ok();
     });
 
-    // Reuses the real field-rename fixture's schema.after.json as the copy source;
-    // everything else about this scenario is synthetic.
     const scenario: Scenario = {
       id: "field-rename",
       description: "test",
