@@ -186,26 +186,21 @@ describe("runCheck cancellation mid-fix: what's left on disk and in git", () => 
       adapters: [fakeAdapter()],
     });
 
-    // The edit is still there after cancellation - nothing reverts it.
     expect(await readFile(path.join(root, "src/a.ts"), "utf-8")).toBe(
       "edited by agent",
     );
 
-    // It's committed, not left dangling uncommitted: the working tree is clean.
     const status = await exec("git status --short");
     expect(status.stdout.trim()).toBe("");
 
-    // It landed on schemend/update (the one branch this run ever creates), not main.
     const branch = await exec("git branch --show-current");
     expect(branch.stdout.trim()).toBe("schemend/update");
     const log = await exec("git log schemend/update --oneline");
     expect(log.stdout).toContain("schemend: update for orders change");
 
-    // No worktree was ever created for this - only the main one exists.
     const worktrees = await exec("git worktree list");
     expect(worktrees.stdout.trim().split("\n")).toHaveLength(1);
 
-    // The report is honest about what happened: flagged, not silently treated as done.
     expect(report.stoppedReason).toBe("cancelled");
     const service = report.services[0];
     expect(service?.branch).toBe("schemend/update");

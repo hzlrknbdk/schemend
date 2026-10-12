@@ -5,7 +5,6 @@ import { describe, expect, it } from "vitest";
 import type { ExecResult } from "./context.js";
 import { diffSchemas } from "./oasdiff.js";
 
-// Real exec, same contract as AdapterContext.exec: never rejects, a non-zero exit is just data.
 function realExec(command: string): Promise<ExecResult> {
   return new Promise((resolve) => {
     execCallback(

@@ -26,7 +26,6 @@ export const TOOL_NAMES: readonly AgentToolName[] = [
   "run_tests",
 ];
 
-/** The Agent SDK exposes MCP tools under a fully-qualified wire name: mcp__<server>__<tool>. */
 export function qualifiedToolName(name: AgentToolName): string {
   return `mcp__${TOOL_SERVER_NAME}__${name}`;
 }
@@ -35,14 +34,12 @@ const QUALIFIED_TO_SHORT = new Map<string, AgentToolName>(
   TOOL_NAMES.map((name) => [qualifiedToolName(name), name]),
 );
 
-/** Reverse of qualifiedToolName; undefined for any tool name that isn't one of ours (e.g. a built-in). */
 export function shortToolName(
   qualifiedName: string,
 ): AgentToolName | undefined {
   return QUALIFIED_TO_SHORT.get(qualifiedName);
 }
 
-/** Line-added/removed counts + a unified diff, for the file-edited event. */
 function computeDiff(
   file: string,
   before: string,
@@ -68,7 +65,6 @@ export interface AgentTools {
   /** The raw tool definitions, exposed for direct unit testing of their handlers. */
   // biome-ignore lint/suspicious/noExplicitAny: tools have different per-tool zod shapes; this list is for test access only.
   tools: SdkMcpToolDefinition<any>[];
-  /** Mutated in place as edit_file succeeds; read after the query loop ends. */
   changedFiles: Set<string>;
 }
 

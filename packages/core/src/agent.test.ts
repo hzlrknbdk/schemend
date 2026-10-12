@@ -238,7 +238,6 @@ describe("runFixAgent", () => {
       api: "orders",
     });
 
-    // The mocked query never actually calls edit_file, so nothing should be reported changed.
     expect(result.changedFiles).toEqual([]);
     expect(
       await readFile(path.join(root, "src/lib/shipping.ts"), "utf-8"),
