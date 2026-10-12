@@ -52,6 +52,5 @@ function RootShell({ children }: RootShellProps) {
 }
 
 function RootComponent() {
-  // Required: nested routes render here. Removing <Outlet /> breaks all child routes.
   return <Outlet />;
 }
