@@ -10,7 +10,6 @@ export interface DiffFile {
   lines: DiffLine[];
 }
 
-/** Splits a unified diff (as produced by `git diff`) into per-file +/- lines for display. */
 export function parseUnifiedDiff(diff: string): DiffFile[] {
   const files: DiffFile[] = [];
   let current: DiffFile | undefined;

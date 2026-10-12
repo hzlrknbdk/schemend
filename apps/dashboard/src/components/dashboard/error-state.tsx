@@ -4,9 +4,7 @@ import { AlertTriangle } from "lucide-react";
 interface ErrorStateProps {
   title: string;
   description: string;
-  /** Technical detail (e.g. a validation failure's raw issue list) — hidden by default. */
   detail?: string | undefined;
-  /** Omit when retrying can't change the outcome (not-found, validation). */
   onRetry?: (() => void) | undefined;
 }
 

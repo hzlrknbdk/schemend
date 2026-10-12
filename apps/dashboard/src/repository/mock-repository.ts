@@ -14,11 +14,6 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * Backs the "demo" build: in-memory fixtures, no network. `VITE_MOCK_SCENARIO` lets a route's
- * error/loading/empty states be exercised on demand (manual QA only — see conventions.md §11),
- * since real fixture data never fails or takes long to resolve on its own.
- */
 export class MockRepository implements Repository {
   async listRuns(): Promise<RunReport[]> {
     await this.applyScenario();

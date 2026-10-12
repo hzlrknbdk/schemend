@@ -4,7 +4,6 @@ import { PageHeader } from "@/components/dashboard/page-header";
 interface EmptyStateProps {
   title: string;
   description: string;
-  /** What to do next — a CopyCommand, a Link, or omitted when there's nothing actionable. */
   action?: ReactNode | undefined;
 }
 

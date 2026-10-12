@@ -8,27 +8,18 @@ export type RepositoryErrorKind =
   | "auth"
   | "unknown";
 
-/**
- * Common base for everything a Repository method can throw. HttpRepository throws one of its
- * subclasses directly, already carrying the right `kind` — this base exists so callers that
- * don't care which subclass (e.g. a generic catch) can still narrow with
- * `error instanceof RepositoryError`.
- */
 export abstract class RepositoryError extends Error {
   abstract readonly kind: RepositoryErrorKind;
 }
 
-/** The request never reached a server: offline, DNS failure, connection refused. */
 export class NetworkError extends RepositoryError {
   readonly kind = "network" as const;
 }
 
-/** The server responded, but not with the resource asked for (HTTP 404). */
 export class NotFoundError extends RepositoryError {
   readonly kind = "not-found" as const;
 }
 
-/** The server responded with an error status other than 404. */
 export class ServerError extends RepositoryError {
   readonly kind = "server" as const;
 
@@ -40,7 +31,6 @@ export class ServerError extends RepositoryError {
   }
 }
 
-/** The server responded, but the body doesn't match the shape Repository expects. */
 export class ValidationError extends RepositoryError {
   readonly kind = "validation" as const;
 
@@ -52,20 +42,14 @@ export class ValidationError extends RepositoryError {
   }
 }
 
-/** No access token in memory (local mode), or the server rejected it (HTTP 401). */
 export class AuthError extends RepositoryError {
   readonly kind = "auth" as const;
 }
 
-/** Anything else — including a render error that never touched a Repository method. */
 export class UnknownRepositoryError extends RepositoryError {
   readonly kind = "unknown" as const;
 }
 
-/**
- * The union every errorComponent switches on (conventions.md §11/§15). RepositoryError itself
- * is abstract, so this is what gives `kind` a real discriminant to narrow on.
- */
 export type NormalizedError =
   | NetworkError
   | NotFoundError
@@ -74,11 +58,6 @@ export type NormalizedError =
   | AuthError
   | UnknownRepositoryError;
 
-/**
- * Used only by an errorComponent (see route-error-state.tsx) — a route's loader can throw
- * something that never went through Repository at all (a render error). Anything already one
- * of our subclasses passes through as-is; everything else becomes "unknown".
- */
 export function normalizeError(error: unknown): NormalizedError {
   if (
     error instanceof NetworkError ||
