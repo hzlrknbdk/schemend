@@ -19,9 +19,7 @@ async function isNextProject(root: string): Promise<boolean> {
     try {
       await access(path.join(root, file));
       return true;
-    } catch {
-      // try the next candidate
-    }
+    } catch {}
   }
   return false;
 }

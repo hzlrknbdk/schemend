@@ -88,7 +88,6 @@ describe("discoverApis", () => {
 
   it("only counts files that directly import the generated client toward usedIn", async () => {
     await writeCheckoutWebFixture();
-    // References the API by name/env var but never imports the generated client.
     await write(
       "src/app/other.ts",
       "const url = process.env.ORDERS_API_URL;\n",

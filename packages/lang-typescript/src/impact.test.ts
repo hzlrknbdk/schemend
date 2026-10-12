@@ -159,7 +159,6 @@ describe("findAffected", () => {
       "src/lib/orders-api.ts",
       ["export interface Order {", "  id: string;", "}", ""].join("\n"),
     );
-    // A type error unrelated to any schema change (wrong argument type).
     await write(
       "src/lib/orders-client.ts",
       [
