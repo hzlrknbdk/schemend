@@ -14,6 +14,12 @@ import { realExec } from "./exec.js";
 import { createEventRecorder } from "./record-events.js";
 import { createRenderer, selectRenderer } from "./renderers/index.js";
 
+function containerUser(): { uid: number; gid: number } | undefined {
+  const uid = process.getuid?.();
+  const gid = process.getgid?.();
+  return uid !== undefined && gid !== undefined ? { uid, gid } : undefined;
+}
+
 const program = new Command()
   .name("schemend")
   .description(
@@ -103,12 +109,14 @@ program
 
       try {
         const config = await loadConfig(configPath);
+        const user = containerUser();
         await runCheck({
           config,
           root,
           exec: realExec,
           adapters: [typescriptAdapter],
           abortController,
+          ...(user !== undefined ? { containerUser: user } : {}),
           onEvent: (event) => {
             renderer.onEvent(event);
             recorder?.onEvent(event);
