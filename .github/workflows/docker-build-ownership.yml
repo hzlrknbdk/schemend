@@ -1,0 +1,104 @@
+name: Docker build ownership
+
+on:
+  workflow_dispatch: {}
+  push:
+    paths:
+      - "packages/core/src/docker-exec.ts"
+      - "packages/core/src/check.ts"
+      - "packages/lang-typescript/docker/Dockerfile"
+  pull_request:
+    paths:
+      - "packages/core/src/docker-exec.ts"
+      - "packages/core/src/check.ts"
+      - "packages/lang-typescript/docker/Dockerfile"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - run: corepack enable
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build
+
+      - name: Clone schemend-demo
+        run: git clone --depth 1 https://github.com/hzlrknbdk/schemend-demo.git demo
+
+      - name: Install checkout-web against the current schema
+        working-directory: demo/apps/checkout-web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm generate:api
+          pnpm exec next typegen
+
+      - name: Apply a non-breaking schema change
+        run: |
+          node -e "
+            const fs = require('node:fs');
+            const path = 'demo/services/orders/openapi.json';
+            const schema = JSON.parse(fs.readFileSync(path, 'utf8'));
+            schema.components.schemas.Order.properties.trackingNumber = { type: 'string', title: 'Trackingnumber' };
+            fs.writeFileSync(path, JSON.stringify(schema, null, 2));
+          "
+
+      - name: Write schemend.config.ts
+        working-directory: demo/apps/checkout-web
+        run: |
+          cat > schemend.config.ts <<'EOF'
+          export default {
+            apis: [
+              { name: "orders", schema: "../../services/orders/openapi.json", usedIn: ["src/lib"] },
+            ],
+            test: "pnpm typecheck && pnpm test",
+            platform: "github",
+            budgetUsd: 1,
+          };
+          EOF
+
+      # Non-breaking: affected.length is 0, so this never reaches the fix agent - no
+      # ANTHROPIC_API_KEY is set anywhere in this job, by design.
+      - name: Run schemend check
+        working-directory: demo/apps/checkout-web
+        run: node "$GITHUB_WORKSPACE/packages/cli/dist/index.mjs" check --record-events events.ndjson
+
+      - name: Verify build output is not root-owned
+        working-directory: demo/apps/checkout-web
+        run: |
+          expected="$(id -u)"
+          actual="$(stat -c '%u' .next/types)"
+          echo "expected uid=$expected, .next/types uid=$actual"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::build output inside the bind-mounted project is root-owned"
+            exit 1
+          fi
+
+      - name: Verify the dependency volume is not root-owned
+        run: |
+          volume="$(docker volume ls --format '{{.Name}}' --filter 'name=schemend-deps-' | head -1)"
+          if [ -z "$volume" ]; then
+            echo "::error::no schemend-deps-* volume found after schemend check ran"
+            exit 1
+          fi
+          image="$(docker images --format '{{.Repository}}:{{.Tag}}' --filter 'reference=schemend-lang-typescript:*' | head -1)"
+          if [ -z "$image" ]; then
+            echo "::error::no schemend-lang-typescript:* image found after schemend check ran"
+            exit 1
+          fi
+          expected="$(id -u)"
+          actual="$(docker run --rm -v "$volume:/nm" "$image" stat -c '%u' /nm/.bin)"
+          echo "expected uid=$expected, volume's node_modules/.bin uid=$actual"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::dependency volume is root-owned, not the invoking user"
+            exit 1
+          fi
