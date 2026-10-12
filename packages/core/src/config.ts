@@ -17,7 +17,6 @@ const DEFAULT_MODELS = {
   classify: "claude-haiku-4-5-20251001",
 } as const;
 
-/** schemend.config.ts shape (SPEC §5); budgetUsd and models fall back to defaults when omitted. */
 export const ConfigSchema = z.object({
   apis: z.array(ApiConfigSchema),
   test: z.string(),
@@ -28,7 +27,6 @@ export const ConfigSchema = z.object({
 
 export type Config = z.infer<typeof ConfigSchema>;
 
-/** Identity function; exists only so schemend.config.ts gets type checking and autocomplete. */
 export function defineConfig(
   config: z.input<typeof ConfigSchema>,
 ): z.input<typeof ConfigSchema> {
@@ -44,7 +42,6 @@ function formatIssues(error: z.ZodError): string {
     .join("\n");
 }
 
-/** Thrown by loadConfig() when schemend.config.ts fails validation; message lists each bad field. */
 export class ConfigValidationError extends Error {
   constructor(configPath: string, error: z.ZodError) {
     super(`invalid config at ${configPath}:\n${formatIssues(error)}`);

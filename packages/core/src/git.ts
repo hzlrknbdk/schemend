@@ -3,7 +3,6 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Exec } from "./context.js";
 
-/** Thrown when `git show <ref>:<path>` fails (e.g. the file didn't exist yet at that ref). */
 export class GitRefNotFoundError extends Error {
   constructor(ref: string, relPath: string, detail: string) {
     super(`could not read "${relPath}" at ref "${ref}": ${detail}`);

@@ -62,7 +62,6 @@ function formatCheck(result: CheckResult): string {
 
 export interface AgentTools {
   server: ReturnType<typeof createSdkMcpServer>;
-  /** The raw tool definitions, exposed for direct unit testing of their handlers. */
   // biome-ignore lint/suspicious/noExplicitAny: tools have different per-tool zod shapes; this list is for test access only.
   tools: SdkMcpToolDefinition<any>[];
   changedFiles: Set<string>;

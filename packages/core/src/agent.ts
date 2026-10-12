@@ -29,10 +29,8 @@ export interface FixAgentInput {
   changes: ApiChange[];
   budget: Budget;
   model: string;
-  /** Which config.apis entry this run is for; tags every event this call emits. */
   api: string;
   onEvent?: (event: CheckEvent) => void;
-  /** Aborting this stops the SDK's query() loop; checked once more before it even starts. */
   abortController?: AbortController;
 }
 

@@ -12,9 +12,6 @@ import type { LanguageAdapter } from "./language-adapter.js";
 import { diffSchemas } from "./oasdiff.js";
 import type { ApiChange } from "./types.js";
 
-// Real git, real filesystem, real runFixAgent (only the SDK's query() is faked) - this is the
-// one place that answers "what does cancellation actually leave behind on disk/in git", which
-// check.test.ts's fakeExec + mocked runFixAgent can't show.
 vi.mock("./oasdiff.js", () => ({ diffSchemas: vi.fn() }));
 vi.mock("@anthropic-ai/claude-agent-sdk", async (importOriginal) => {
   const actual =
@@ -60,7 +57,6 @@ function execIn(cwd: string): Exec {
 
 const GIT_ENV = "-c user.email=a@b.c -c user.name=a -c commit.gpgsign=false";
 
-/** Two commits: HEAD~1 is the "old" schema writeFileAtRef reads, HEAD is the "new" one on disk. */
 async function createRepo(): Promise<{ root: string; exec: Exec }> {
   const root = await tempDir();
   const exec = execIn(root);
@@ -105,8 +101,6 @@ function fakeAdapter(): LanguageAdapter {
     ],
     build: async () => ({ name: "build", status: "passed" }),
     test: async () => ({ name: "test", status: "passed" }),
-    // Real Docker (this file uses real exec throughout, see the comment above) - a small,
-    // already-pulled image with a no-op install keeps ensureDockerCtx fast and real.
     dockerImage: "node:24.21.0-slim",
     installCommand: "true",
     lockfile: "pnpm-lock.yaml",
@@ -173,10 +167,6 @@ describe("runCheck cancellation mid-fix: what's left on disk and in git", () => 
     );
 
     const { root, exec } = await createRepo();
-    // The mocked query() only replays messages - it never actually invokes buildAgentTools'
-    // real edit_file handler (that's the live SDK's job). agent-tools.test.ts already proves
-    // edit_file itself writes real content; this simulates "the agent's edit already landed
-    // on disk" so this test can focus on what the orchestration does with it once cancelled.
     await writeFile(path.join(root, "src/a.ts"), "edited by agent");
 
     const report = await runCheck({

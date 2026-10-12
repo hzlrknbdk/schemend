@@ -6,10 +6,8 @@ import type {
   ServiceResult,
 } from "./types.js";
 
-/** Bumped whenever a CheckEvent variant's shape changes; recorded fixtures pin to one version. */
 export const EVENT_SCHEMA_VERSION = 1;
 
-/** The seven steps runCheck/runFixAgent run through for one api, in order. */
 export type CheckStepName =
   | "detect"
   | "baseline"
@@ -21,7 +19,6 @@ export type CheckStepName =
 
 export type StepStatus = "passed" | "failed" | "skipped";
 
-/** Known causes for a failed step; "other" covers anything not worth its own case yet. */
 export type StepFailureReason =
   | "baseline-failed"
   | "budget-exceeded"
@@ -114,11 +111,6 @@ type DistributiveOmit<T, K extends keyof T> = T extends unknown
   ? Omit<T, K>
   : never;
 
-/**
- * Builds an `emit` function that stamps `timestamp` on every event and, when onEvent is undefined
- * (no listener registered), is a no-op. runCheck and runFixAgent each create one of these instead
- * of checking `options.onEvent` before every call.
- */
 export function createEventEmitter(
   onEvent?: (event: CheckEvent) => void,
 ): (event: DistributiveOmit<CheckEvent, "timestamp">) => void {

@@ -31,18 +31,13 @@ import type {
 
 export interface RunCheckOptions {
   config: Config;
-  /** The consumer project's own root; one schemend.config.ts is one consumer (SPEC §5). */
   root: string;
   exec: Exec;
   /** Tried in order; the first one whose detect(root) returns true is used for every api. */
   adapters: LanguageAdapter[];
-  /** git ref the "old" schema is read from (SPEC §2 step 2). Defaults to the previous commit. */
   baseRef?: string;
-  /** Called for every event this run produces (step/agent/check/cost/...); core does no I/O itself. */
   onEvent?: (event: CheckEvent) => void;
-  /** Aborting this stops the run at the next checkpoint (between apis, or inside the fix agent). */
   abortController?: AbortController;
-  /** Runs Docker build/test/install as this uid/gid instead of root (see docker-exec.ts). */
   containerUser?: ContainerUser;
 }
 
@@ -345,7 +340,6 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
       branchReady = true;
     }
 
-    // SPEC §2 step 4: regenerate the client, then locate the affected code.
     const regenerateStartedAt = Date.now();
     emit({ type: "step-started", api, step: "regenerate" });
     if (adapter.regenerateClient) {
@@ -505,7 +499,6 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
       break;
     }
 
-    // SPEC §2 steps 5-6: fix, then verify.
     const fix = await runFixAgent({
       ctx: dockerCtx,
       adapter,

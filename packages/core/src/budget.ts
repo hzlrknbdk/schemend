@@ -1,4 +1,3 @@
-/** Thrown by Budget.assertAvailable() once spending has already reached the limit. */
 export class BudgetExceededError extends Error {
   constructor(limitUsd: number, spentUsd: number) {
     super(
@@ -8,7 +7,6 @@ export class BudgetExceededError extends Error {
   }
 }
 
-/** Tracks USD spend against a limit; checked before every model call (SPEC §6). */
 export class Budget {
   readonly limitUsd: number;
   #spentUsd = 0;
@@ -25,7 +23,6 @@ export class Budget {
     return Math.max(0, this.limitUsd - this.#spentUsd);
   }
 
-  /** Throws if spending has already reached the limit. Call before starting a model call. */
   assertAvailable(): void {
     if (this.#spentUsd >= this.limitUsd) {
       throw new BudgetExceededError(this.limitUsd, this.#spentUsd);

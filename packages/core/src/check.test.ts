@@ -70,11 +70,6 @@ function makeAdapter(
   };
 }
 
-/**
- * A fake git/exec: "git show" backs writeFileAtRef (always succeeds with placeholder content),
- * "git diff --name-only --cached --relative" reports whatever files this test wants to appear
- * committed, everything else (add/checkout/commit) just succeeds. No real git repo needed.
- */
 function fakeExec(changedFilesByCall: string[][]): Exec {
   let diffCall = 0;
   return async (command: string): Promise<ExecResult> => {
