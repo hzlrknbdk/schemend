@@ -19,6 +19,8 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    env:
+      DEMO_DIR: ${{ runner.temp }}/demo
     steps:
       - uses: actions/checkout@v5
 
@@ -34,12 +36,15 @@ jobs:
       - run: pnpm build
 
       # Full clone (not --depth 1): schemend check's default baseRef is HEAD~1, which a
-      # shallow clone doesn't have.
+      # shallow clone doesn't have. Cloned to runner.temp, outside $GITHUB_WORKSPACE: this
+      # repo's own pnpm-workspace.yaml sits at $GITHUB_WORKSPACE's root, and schemend check's
+      # workspace guard (SPEC §4/§9) walks up from the consumer looking for exactly that
+      # marker - cloning demo/ inside this checkout would make it find ours instead.
       - name: Clone schemend-demo
-        run: git clone https://github.com/hzlrknbdk/schemend-demo.git demo
+        run: git clone "https://github.com/hzlrknbdk/schemend-demo.git" "$DEMO_DIR"
 
       - name: Install checkout-web against the current schema
-        working-directory: demo/apps/checkout-web
+        working-directory: ${{ env.DEMO_DIR }}/apps/checkout-web
         run: |
           pnpm install --frozen-lockfile
           pnpm generate:api
@@ -49,14 +54,14 @@ jobs:
         run: |
           node -e "
             const fs = require('node:fs');
-            const path = 'demo/services/orders/openapi.json';
+            const path = '${DEMO_DIR}/services/orders/openapi.json';
             const schema = JSON.parse(fs.readFileSync(path, 'utf8'));
             schema.components.schemas.Order.properties.trackingNumber = { type: 'string', title: 'Trackingnumber' };
             fs.writeFileSync(path, JSON.stringify(schema, null, 2));
           "
 
       - name: Write schemend.config.ts
-        working-directory: demo/apps/checkout-web
+        working-directory: ${{ env.DEMO_DIR }}/apps/checkout-web
         run: |
           cat > schemend.config.ts <<'EOF'
           export default {
@@ -72,14 +77,14 @@ jobs:
       # Non-breaking: affected.length is 0, so this never reaches the fix agent - no
       # ANTHROPIC_API_KEY is set anywhere in this job, by design.
       - name: Run schemend check
-        working-directory: demo/apps/checkout-web
+        working-directory: ${{ env.DEMO_DIR }}/apps/checkout-web
         run: node "$GITHUB_WORKSPACE/packages/cli/dist/index.mjs" check --record-events events.ndjson
 
       # The check step above can exit 0 without ever reaching Docker (e.g. a schema it
       # can't read is reported as a non-fatal service result, not a crash) - a passing
       # exit code alone doesn't prove baseline ran. Read the recorded events instead.
       - name: Verify schemend check reached a passed baseline step
-        working-directory: demo/apps/checkout-web
+        working-directory: ${{ env.DEMO_DIR }}/apps/checkout-web
         run: |
           if ! jq -e 'select(.type == "step-finished" and .step == "baseline" and .status == "passed")' events.ndjson > /dev/null; then
             echo "::error::schemend check never reached a passed baseline step - see events.ndjson"
@@ -87,7 +92,7 @@ jobs:
           fi
 
       - name: Verify build output is not root-owned
-        working-directory: demo/apps/checkout-web
+        working-directory: ${{ env.DEMO_DIR }}/apps/checkout-web
         run: |
           expected="$(id -u)"
           actual="$(stat -c '%u' .next/types)"
