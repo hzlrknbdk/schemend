@@ -38,7 +38,6 @@ export interface StepsPanelProps {
   apis: ApiState[];
 }
 
-/** One box per api (steps panel, SPEC §9): each of the 7 steps with its status and duration. */
 export function StepsPanel({ apis }: StepsPanelProps) {
   return (
     <Box

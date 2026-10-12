@@ -7,7 +7,6 @@ export interface EventStore {
   subscribe(listener: () => void): () => void;
 }
 
-/** Mutable wrapper around the pure reduceEvents, for React's useSyncExternalStore. */
 export function createEventStore(): EventStore {
   let state = createInitialState();
   const listeners = new Set<() => void>();

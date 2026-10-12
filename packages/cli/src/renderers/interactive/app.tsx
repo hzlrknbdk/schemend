@@ -23,7 +23,6 @@ export interface AppProps {
   columns?: number;
 }
 
-/** Below this terminal width, the steps/agent panels stack instead of sitting side by side. */
 const WIDE_TERMINAL_COLUMNS = 80;
 
 /**

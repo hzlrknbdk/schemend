@@ -7,10 +7,6 @@ export interface EventRecorder {
   close(): Promise<void>;
 }
 
-/**
- * --record-events <file>: tees every event to an NDJSON file, independent of whichever renderer
- * draws the terminal output. Meant for capturing a real run's events to replay later as a fixture.
- */
 export function createEventRecorder(filePath: string): EventRecorder {
   const stream = createWriteStream(filePath, { flags: "w" });
   return {

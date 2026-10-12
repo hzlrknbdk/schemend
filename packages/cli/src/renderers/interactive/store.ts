@@ -123,7 +123,6 @@ function describeToolResult(
   }
 }
 
-/** Pure reducer: one CheckEvent in, the next UiState out. Exhaustive switch over `event.type`. */
 export function reduceEvents(state: UiState, event: CheckEvent): UiState {
   switch (event.type) {
     case "run-started": {

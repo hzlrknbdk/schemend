@@ -11,11 +11,9 @@ export interface RendererContext {
   productName: string;
   version: string;
   consumer: string;
-  /** Called once, e.g. on "q" in the interactive renderer; ignored by plain/json. */
   onCancel: () => void;
 }
 
-/** Maps a RendererKind to its implementation. The one place that decides which renderer runs. */
 export function createRenderer(kind: RendererKind, context: RendererContext) {
   switch (kind) {
     case "json":

@@ -1,4 +1,3 @@
-/** Returns a function that hands out increasing ISO timestamps, `stepMs` apart, starting at `startIso`. */
 export function createTimestampSequence(
   startIso: string,
   stepMs = 400,

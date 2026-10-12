@@ -11,7 +11,6 @@ export interface InteractiveRendererOptions {
   onCancel: () => void;
 }
 
-/** The Ink UI (SPEC §9): mounts once, then every onEvent call just dispatches into its store. */
 export function createInteractiveRenderer(
   options: InteractiveRendererOptions,
 ): Renderer {

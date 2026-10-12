@@ -7,7 +7,6 @@ export interface AgentPanelProps {
 
 const MAX_VISIBLE_ENTRIES = 8;
 
-/** Last tool calls/results across every api (agent panel, SPEC §9), most recent last. */
 export function AgentPanel({ apis }: AgentPanelProps) {
   const entries = apis
     .flatMap((apiState) =>

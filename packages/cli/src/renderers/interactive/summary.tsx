@@ -6,7 +6,6 @@ export interface SummaryProps {
   report: RunReport;
 }
 
-/** Final per-service summary + budget line + next-command suggestion (SPEC §9), shown on run-finished. */
 export function Summary({ report }: SummaryProps) {
   const hasBranch = report.services.some((service) => service.branch);
 

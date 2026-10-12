@@ -8,7 +8,6 @@ export interface BudgetBarProps {
 
 const BAR_WIDTH = 20;
 
-/** Live spent/limit bar (SPEC §9), red past 90%, yellow past 60%, green otherwise. */
 export function BudgetBar({ spentUsd, budgetUsd }: BudgetBarProps) {
   const ratio = budgetUsd > 0 ? Math.min(1, spentUsd / budgetUsd) : 0;
   const filled = Math.round(ratio * BAR_WIDTH);

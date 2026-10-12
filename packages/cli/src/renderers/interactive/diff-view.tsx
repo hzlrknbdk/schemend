@@ -16,7 +16,6 @@ function classifyDiffLine(line: string): DiffLineKind {
   return "context";
 }
 
-/** Colorized diff of the most recently edited file (SPEC §9), capped to a readable number of lines. */
 export function DiffView({ lastEdit }: DiffViewProps) {
   if (!lastEdit) {
     return (
