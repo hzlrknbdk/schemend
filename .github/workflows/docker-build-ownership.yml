@@ -20,9 +20,9 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
 
@@ -32,8 +32,10 @@ jobs:
 
       - run: pnpm build
 
+      # Full clone (not --depth 1): schemend check's default baseRef is HEAD~1, which a
+      # shallow clone doesn't have.
       - name: Clone schemend-demo
-        run: git clone --depth 1 https://github.com/hzlrknbdk/schemend-demo.git demo
+        run: git clone https://github.com/hzlrknbdk/schemend-demo.git demo
 
       - name: Install checkout-web against the current schema
         working-directory: demo/apps/checkout-web
@@ -71,6 +73,17 @@ jobs:
       - name: Run schemend check
         working-directory: demo/apps/checkout-web
         run: node "$GITHUB_WORKSPACE/packages/cli/dist/index.mjs" check --record-events events.ndjson
+
+      # The check step above can exit 0 without ever reaching Docker (e.g. a schema it
+      # can't read is reported as a non-fatal service result, not a crash) - a passing
+      # exit code alone doesn't prove baseline ran. Read the recorded events instead.
+      - name: Verify schemend check reached a passed baseline step
+        working-directory: demo/apps/checkout-web
+        run: |
+          if ! jq -e 'select(.type == "step-finished" and .step == "baseline" and .status == "passed")' events.ndjson > /dev/null; then
+            echo "::error::schemend check never reached a passed baseline step - see events.ndjson"
+            exit 1
+          fi
 
       - name: Verify build output is not root-owned
         working-directory: demo/apps/checkout-web
