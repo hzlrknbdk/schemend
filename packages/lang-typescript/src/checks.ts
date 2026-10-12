@@ -35,7 +35,6 @@ function toCheckResult(
     : { name, status: "failed", detail: stderr || stdout };
 }
 
-/** LanguageAdapter.build (SPEC §4): typechecks the consumer via its own "typecheck" script. */
 export async function build(ctx: AdapterContext): Promise<CheckResult> {
   if (await isNextProject(ctx.root)) {
     await ctx.exec("pnpm exec next typegen");
@@ -49,7 +48,6 @@ export async function build(ctx: AdapterContext): Promise<CheckResult> {
   );
 }
 
-/** LanguageAdapter.test (SPEC §4): runs the consumer's own "test" script. */
 export async function test(ctx: AdapterContext): Promise<CheckResult> {
   const result = await ctx.exec("pnpm test");
   return toCheckResult("test", result.exitCode, result.stdout, result.stderr);

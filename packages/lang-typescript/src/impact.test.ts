@@ -191,7 +191,6 @@ describe("findAffected", () => {
         "",
       ].join("\n"),
     );
-    // Inside api.usedIn (["src/lib"]): imports the generated client directly.
     await write(
       "src/lib/orders-client.ts",
       [
@@ -205,7 +204,6 @@ describe("findAffected", () => {
         "",
       ].join("\n"),
     );
-    // Outside api.usedIn: only reaches Order indirectly through orders-client.ts.
     await write(
       "src/components/OrderSummary.tsx",
       [

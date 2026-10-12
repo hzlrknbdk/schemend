@@ -12,7 +12,6 @@ const SKIP_DIRS = new Set(["node_modules", ".git", ".next", ".turbo", "dist"]);
 const GENERATE_SCRIPT_RE =
   /openapi-typescript\s+(\S+)\s+(?:-o|--output)\s+(\S+)/;
 
-/** e.g. "process.env.ORDERS_API_URL"; recorded as evidence only, never part of usedIn. */
 const ENV_API_URL_RE = /process\.env\.([A-Z0-9_]+_API_URL)/g;
 
 interface GeneratedClient {
@@ -168,7 +167,6 @@ async function exists(file: string): Promise<boolean> {
   }
 }
 
-/** True when root looks like a TypeScript project (package.json + tsconfig.json present). */
 export async function detect(root: string): Promise<boolean> {
   const [hasPackageJson, hasTsconfig] = await Promise.all([
     exists(path.join(root, "package.json")),

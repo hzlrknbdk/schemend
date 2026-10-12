@@ -22,7 +22,6 @@ const DOCKERFILE_HASH = createHash("sha256")
   .digest("hex")
   .slice(0, 8);
 
-/** TypeScript LanguageAdapter (SPEC §4); wires together this package's individually-tested pieces. */
 export const typescriptAdapter: LanguageAdapter = {
   id: "typescript",
   detect,
