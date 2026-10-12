@@ -4,6 +4,16 @@ import { runFixAgent } from "./agent.js";
 import { Budget, BudgetExceededError } from "./budget.js";
 import type { Config } from "./config.js";
 import type { AdapterContext, Exec } from "./context.js";
+import {
+  assertStandaloneProject,
+  type ContainerUser,
+  chownDependencyVolume,
+  createDockerExec,
+  dependencyVolumeName,
+  ensureContainerDeps,
+  ensureDockerImage,
+  pruneStaleDependencyVolumes,
+} from "./docker-exec.js";
 import type { CheckEvent } from "./events.js";
 import { createEventEmitter, EVENT_SCHEMA_VERSION } from "./events.js";
 import { writeFileAtRef } from "./git.js";
@@ -32,6 +42,8 @@ export interface RunCheckOptions {
   onEvent?: (event: CheckEvent) => void;
   /** Aborting this stops the run at the next checkpoint (between apis, or inside the fix agent). */
   abortController?: AbortController;
+  /** Runs Docker build/test/install as this uid/gid instead of root (see docker-exec.ts). */
+  containerUser?: ContainerUser;
 }
 
 const BRANCH_NAME = "schemend/update";
@@ -70,6 +82,61 @@ async function ensureBranch(ctx: AdapterContext): Promise<void> {
   if (created.exitCode !== 0) {
     await ctx.exec(`git checkout ${BRANCH_NAME}`);
   }
+}
+
+/**
+ * Builds the Docker-backed AdapterContext build/test run through (SPEC §4/§6): ensures the
+ * adapter's image and dependency volume exist (installing with network access into a volume
+ * keyed by the lockfile's content, so a dependency change lands on a fresh volume instead of
+ * stale node_modules - see docker-exec.ts), prunes any older volume for this same root, then
+ * returns a context whose exec runs with that volume mounted and the network disabled.
+ */
+async function ensureDockerCtx(
+  adapter: LanguageAdapter,
+  root: string,
+  exec: Exec,
+  abortController: AbortController | undefined,
+  containerUser: ContainerUser | undefined,
+): Promise<AdapterContext> {
+  await assertStandaloneProject(
+    root,
+    adapter.lockfile,
+    adapter.workspaceMarkers,
+  );
+  const volume = await dependencyVolumeName(
+    root,
+    path.join(root, adapter.lockfile),
+  );
+  await ensureDockerImage(exec, adapter.dockerImage, adapter.dockerfile);
+  await pruneStaleDependencyVolumes(exec, root, volume);
+  if (containerUser) {
+    await chownDependencyVolume(
+      exec,
+      adapter.dockerImage,
+      volume,
+      adapter.dependencyVolumePath,
+      containerUser,
+    );
+  }
+  await ensureContainerDeps({
+    exec,
+    root,
+    image: adapter.dockerImage,
+    volume,
+    volumeTarget: adapter.dependencyVolumePath,
+    installCommand: adapter.installCommand,
+    ...(abortController !== undefined ? { abortController } : {}),
+    ...(containerUser !== undefined ? { user: containerUser } : {}),
+  });
+  return {
+    root,
+    exec: createDockerExec(exec, root, adapter.dockerImage, {
+      network: "none",
+      volumes: { [volume]: adapter.dependencyVolumePath },
+      ...(abortController !== undefined ? { abortController } : {}),
+      ...(containerUser !== undefined ? { user: containerUser } : {}),
+    }),
+  };
 }
 
 /**
@@ -116,6 +183,7 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
   const allChanges: ApiChange[] = [];
   const services: ServiceResult[] = [];
   let branchReady = false;
+  let dockerCtxCache: AdapterContext | undefined;
   let stoppedReason: string | undefined;
 
   emit({
@@ -216,9 +284,19 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
     // SPEC §2 step 3: baseline BEFORE anything (including regeneration) changes.
     const baselineStartedAt = Date.now();
     emit({ type: "step-started", api, step: "baseline" });
-    const baselineBuild = await adapter.build(ctx);
+    if (!dockerCtxCache) {
+      dockerCtxCache = await ensureDockerCtx(
+        adapter,
+        root,
+        exec,
+        options.abortController,
+        options.containerUser,
+      );
+    }
+    const dockerCtx: AdapterContext = dockerCtxCache;
+    const baselineBuild = await adapter.build(dockerCtx);
     emit({ type: "check-result", api, check: baselineBuild });
-    const baselineTest = await adapter.test(ctx);
+    const baselineTest = await adapter.test(dockerCtx);
     emit({ type: "check-result", api, check: baselineTest });
     if (baselineBuild.status !== "passed" || baselineTest.status !== "passed") {
       emit({
@@ -296,9 +374,9 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
     if (affected.length === 0) {
       const verifyStartedAt = Date.now();
       emit({ type: "step-started", api, step: "verify" });
-      const postBuild = await adapter.build(ctx);
+      const postBuild = await adapter.build(dockerCtx);
       emit({ type: "check-result", api, check: postBuild });
-      const postTest = await adapter.test(ctx);
+      const postTest = await adapter.test(dockerCtx);
       emit({ type: "check-result", api, check: postTest });
       const ok = postBuild.status === "passed" && postTest.status === "passed";
       emit({
@@ -429,7 +507,7 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
 
     // SPEC §2 steps 5-6: fix, then verify.
     const fix = await runFixAgent({
-      ctx,
+      ctx: dockerCtx,
       adapter,
       affected,
       changes,

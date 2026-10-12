@@ -6,6 +6,7 @@ export * from "./budget.js";
 export * from "./check.js";
 export * from "./config.js";
 export * from "./context.js";
+export * from "./docker-exec.js";
 export * from "./events.js";
 export * from "./git.js";
 export * from "./language-adapter.js";

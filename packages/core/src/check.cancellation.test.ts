@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runCheck } from "./check.js";
 import type { Config } from "./config.js";
 import type { Exec, ExecResult } from "./context.js";
+import { dependencyVolumeName } from "./docker-exec.js";
 import type { LanguageAdapter } from "./language-adapter.js";
 import { diffSchemas } from "./oasdiff.js";
 import type { ApiChange } from "./types.js";
@@ -67,6 +68,7 @@ async function createRepo(): Promise<{ root: string; exec: Exec }> {
   await mkdir(path.join(root, "src"), { recursive: true });
   await writeFile(path.join(root, "schema.json"), "old");
   await writeFile(path.join(root, "src/a.ts"), "original content");
+  await writeFile(path.join(root, "pnpm-lock.yaml"), "lockfileVersion: '9.0'");
   await exec("git add -A");
   await exec(`git ${GIT_ENV} commit -q -m first`);
   await writeFile(path.join(root, "schema.json"), "new");
@@ -103,6 +105,13 @@ function fakeAdapter(): LanguageAdapter {
     ],
     build: async () => ({ name: "build", status: "passed" }),
     test: async () => ({ name: "test", status: "passed" }),
+    // Real Docker (this file uses real exec throughout, see the comment above) - a small,
+    // already-pulled image with a no-op install keeps ensureDockerCtx fast and real.
+    dockerImage: "node:24.21.0-slim",
+    installCommand: "true",
+    lockfile: "pnpm-lock.yaml",
+    workspaceMarkers: [],
+    dependencyVolumePath: "/workspace/node_modules",
   };
 }
 
@@ -111,9 +120,21 @@ beforeEach(() => {
   mockedQuery.mockReset();
 });
 
+// Each test's root is a fresh temp dir, so ensureDockerCtx's per-root dependency volume (see
+// docker-exec.ts) is unique per run too and would never get pruned by a later run - remove it
+// here, the same way the temp dir itself is removed, so repeated test runs don't accumulate
+// orphaned Docker volumes on the host.
 afterEach(async () => {
+  const dirs = tempDirs.splice(0);
   await Promise.all(
-    tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })),
+    dirs.map(async (dir) => {
+      const volume = await dependencyVolumeName(
+        dir,
+        path.join(dir, "pnpm-lock.yaml"),
+      );
+      await execIn(dir)(`docker volume rm ${volume}`);
+      await rm(dir, { recursive: true, force: true });
+    }),
   );
 });
 

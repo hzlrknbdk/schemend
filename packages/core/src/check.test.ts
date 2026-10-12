@@ -21,6 +21,7 @@ let root: string;
 
 beforeEach(async () => {
   root = await mkdtemp(path.join(tmpdir(), "schemend-check-"));
+  await writeFile(path.join(root, "pnpm-lock.yaml"), "lockfileVersion: '9.0'");
   mockedDiff.mockReset();
   mockedFixAgent.mockReset();
 });
@@ -60,6 +61,11 @@ function makeAdapter(
       ({ name: "build", status: "passed" }) satisfies CheckResult,
     test: async () =>
       ({ name: "test", status: "passed" }) satisfies CheckResult,
+    dockerImage: "fake-image",
+    installCommand: "true",
+    lockfile: "pnpm-lock.yaml",
+    workspaceMarkers: [],
+    dependencyVolumePath: "/workspace/node_modules",
     ...overrides,
   };
 }
