@@ -59,7 +59,6 @@ export const events: CheckEvent[] = [
     apis: ["orders", "invoices"],
     budgetUsd: 0.1,
   },
-  // --- orders ---
   { type: "step-started", timestamp: ts(), api: "orders", step: "detect" },
   {
     type: "changes-detected",
@@ -243,8 +242,8 @@ export const events: CheckEvent[] = [
       costUsd: 0.12,
     },
   },
-  // --- invoices: detect/baseline/regenerate/impact still run (they're free), but the budget's
-  // already gone by the time the fix would start ---
+  // invoices: detect/baseline/regenerate/impact still run (they're free), but the budget's
+  // already gone by the time the fix would start.
   { type: "step-started", timestamp: ts(), api: "invoices", step: "detect" },
   {
     type: "changes-detected",
