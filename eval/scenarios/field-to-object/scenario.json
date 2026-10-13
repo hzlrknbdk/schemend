@@ -3,7 +3,7 @@
   "description": "orders: totalPrice replaced by total { amount, currency }",
   "real": false,
   "source": "schemend-demo",
-  "ref": "736bfec",
+  "ref": "5b59825",
   "providerSchema": "services/orders/openapi.json",
   "schemaBefore": "schema.before.json",
   "schemaAfter": "schema.after.json",
@@ -17,6 +17,12 @@
       ],
       "checks": ["pnpm typecheck", "pnpm test"],
       "mustNotContain": [".totalPrice"]
+    },
+    "services/invoice": {
+      "expected": "fixed",
+      "setup": ["mvn -q -B generate-sources"],
+      "checks": ["mvn -q -B test-compile", "mvn -q -B test"],
+      "mustNotContain": [".getTotalPrice()"]
     }
   }
 }
