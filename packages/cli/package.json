@@ -19,6 +19,7 @@
   "dependencies": {
     "@clack/prompts": "^1.8.1",
     "@schemend/core": "workspace:*",
+    "@schemend/lang-java": "workspace:*",
     "@schemend/lang-typescript": "workspace:*",
     "commander": "^15.0.0",
     "ink": "^8.0.0",
