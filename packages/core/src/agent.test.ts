@@ -6,7 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runFixAgent } from "./agent.js";
 import { Budget } from "./budget.js";
 import type { CheckEvent } from "./events.js";
-import type { AffectedLocation, ApiChange, CheckResult } from "./types.js";
+import type {
+  AffectedLocation,
+  ApiChange,
+  ApiEntry,
+  CheckResult,
+} from "./types.js";
 
 vi.mock("@anthropic-ai/claude-agent-sdk", async (importOriginal) => {
   const actual =
@@ -72,6 +77,14 @@ const passingAdapter = {
     status: "passed",
   }),
   test: async (): Promise<CheckResult> => ({ name: "test", status: "passed" }),
+  findAffected: async (): Promise<AffectedLocation[]> => [],
+};
+
+const apiEntry: ApiEntry = {
+  name: "orders",
+  kind: "internal",
+  source: { type: "openapi", location: "../../services/orders/openapi.json" },
+  usedIn: ["src/lib"],
 };
 
 const change: ApiChange = {
@@ -114,6 +127,7 @@ describe("runFixAgent", () => {
     const result = await runFixAgent({
       ctx: ctx(),
       adapter: passingAdapter,
+      apiEntry,
       affected,
       changes: [change],
       budget,
@@ -134,6 +148,7 @@ describe("runFixAgent", () => {
     const result = await runFixAgent({
       ctx: ctx(),
       adapter: passingAdapter,
+      apiEntry,
       affected,
       changes: [change],
       budget,
@@ -165,6 +180,7 @@ describe("runFixAgent", () => {
     const result = await runFixAgent({
       ctx: ctx(),
       adapter: passingAdapter,
+      apiEntry,
       affected,
       changes: [change],
       budget: new Budget(1),
@@ -184,11 +200,13 @@ describe("runFixAgent", () => {
         name: "test",
         status: "failed" as const,
       }),
+      findAffected: passingAdapter.findAffected,
     };
 
     const result = await runFixAgent({
       ctx: ctx(),
       adapter,
+      apiEntry,
       affected,
       changes: [change],
       budget: new Budget(1),
@@ -210,11 +228,13 @@ describe("runFixAgent", () => {
         name: "test",
         status: "failed" as const,
       }),
+      findAffected: passingAdapter.findAffected,
     };
 
     const result = await runFixAgent({
       ctx: ctx(),
       adapter,
+      apiEntry,
       affected,
       changes: [change],
       budget: new Budget(1),
@@ -231,6 +251,7 @@ describe("runFixAgent", () => {
     const result = await runFixAgent({
       ctx: ctx(),
       adapter: passingAdapter,
+      apiEntry,
       affected,
       changes: [change],
       budget: new Budget(1),
@@ -262,6 +283,7 @@ describe("runFixAgent events", () => {
     await runFixAgent({
       ctx: ctx(),
       adapter: passingAdapter,
+      apiEntry,
       affected,
       changes: [change],
       budget: new Budget(1),
@@ -306,6 +328,7 @@ describe("runFixAgent events", () => {
     await runFixAgent({
       ctx: ctx(),
       adapter: passingAdapter,
+      apiEntry,
       affected,
       changes: [change],
       budget: new Budget(1),
@@ -333,6 +356,7 @@ describe("runFixAgent events", () => {
     await runFixAgent({
       ctx: ctx(),
       adapter: passingAdapter,
+      apiEntry,
       affected,
       changes: [change],
       budget: new Budget(1),
@@ -367,6 +391,7 @@ describe("runFixAgent events", () => {
     await runFixAgent({
       ctx: ctx(),
       adapter: passingAdapter,
+      apiEntry,
       affected,
       changes: [change],
       budget,
@@ -396,6 +421,7 @@ describe("runFixAgent cancellation", () => {
     const result = await runFixAgent({
       ctx: ctx(),
       adapter: passingAdapter,
+      apiEntry,
       affected,
       changes: [change],
       budget: new Budget(1),
@@ -427,7 +453,8 @@ describe("runFixAgent cancellation", () => {
 
     const result = await runFixAgent({
       ctx: ctx(),
-      adapter: { build, test },
+      adapter: { build, test, findAffected: passingAdapter.findAffected },
+      apiEntry,
       affected,
       changes: [change],
       budget: new Budget(1),
@@ -460,6 +487,7 @@ describe("runFixAgent cancellation", () => {
       runFixAgent({
         ctx: ctx(),
         adapter: passingAdapter,
+        apiEntry,
         affected,
         changes: [change],
         budget: new Budget(1),

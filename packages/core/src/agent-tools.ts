@@ -14,7 +14,18 @@ import {
   createEventEmitter,
 } from "./events.js";
 import type { LanguageAdapter } from "./language-adapter.js";
-import type { CheckResult } from "./types.js";
+import type { ApiChange, ApiEntry, CheckResult } from "./types.js";
+
+/**
+ * True if `relPath`, resolved against `root`, never escapes it (no `../` traversal, not
+ * absolute) - a defensive check on paths `findAffected` hands back, since a buggy adapter
+ * returning something outside the consumer's own directory should never get silently allowed.
+ */
+function isWithinRoot(root: string, relPath: string): boolean {
+  if (path.isAbsolute(relPath)) return false;
+  const rel = path.relative(root, path.resolve(root, relPath));
+  return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+}
 
 /** MCP server name the agent's custom tools are registered under; wire names are mcp__<this>__<tool>. */
 export const TOOL_SERVER_NAME = "schemend";
@@ -69,24 +80,36 @@ export interface AgentTools {
 
 /**
  * Builds the four tools the fix agent is allowed to use (SPEC §6): read_file/edit_file operate
- * only within ctx.root, and edit_file refuses any path outside `affectedFiles` (SPEC §2 step 5:
- * "agent edits only affected files"). run_build/run_tests call straight through to the adapter,
- * which routes execution through ctx.exec (Docker-vs-local stays in core, per AdapterContext).
+ * only within ctx.root, and edit_file refuses any path outside `allowed` (SPEC §2 step 5: "agent
+ * edits only affected files"). run_build/run_tests call straight through to the adapter, which
+ * routes execution through ctx.exec (Docker-vs-local stays in core, per AdapterContext).
  *
- * `events`, when given, lets edit_file emit a file-edited event with the actual diff - the only
+ * `allowed` grows during the session: a Maven/dotnet-style two-phase build (compile, then
+ * test-compile) can't surface a test file's compiler error until the main code compiles clean,
+ * so the first findAffected call (before any fix) can miss it entirely - unlike TypeScript's
+ * ts-morph, which diagnoses the whole project (main + test) in one pass regardless of phase. When
+ * run_build reports a failure, this re-runs the adapter's own findAffected and adds any
+ * newly-reported file not already allowed (and within ctx.root - see isWithinRoot), so a file
+ * that was compiler-invisible at the start becomes editable the moment a real compiler error
+ * names it. Language-independent: core never parses a compiler's own output itself, it just
+ * calls the adapter's findAffected again.
+ *
+ * `onEvent`, when given, lets edit_file emit a file-edited event with the actual diff - the only
  * place that has both the old and new file content in hand. The agent-tool-call/-result events
  * for all four tools come from parsing the SDK's own message stream instead (runFixAgent), since
  * that's the only place that sees the model's tool_use id.
  */
 export function buildAgentTools(
   ctx: AdapterContext,
-  adapter: Pick<LanguageAdapter, "build" | "test">,
+  adapter: Pick<LanguageAdapter, "build" | "test" | "findAffected">,
   affectedFiles: readonly string[],
-  events?: { api: string; onEvent?: (event: CheckEvent) => void },
+  api: ApiEntry,
+  changes: ApiChange[],
+  onEvent?: (event: CheckEvent) => void,
 ): AgentTools {
   const allowed = new Set(affectedFiles);
   const changedFiles = new Set<string>();
-  const emit = createEventEmitter(events?.onEvent);
+  const emit = createEventEmitter(onEvent);
 
   const readFileTool = tool(
     "read_file",
@@ -135,11 +158,11 @@ export function buildAgentTools(
       }
       await writeFile(absPath, content, "utf-8");
       changedFiles.add(relPath);
-      if (events && before !== content) {
+      if (onEvent && before !== content) {
         const { added, removed, diff } = computeDiff(relPath, before, content);
         emit({
           type: "file-edited",
-          api: events.api,
+          api: api.name,
           file: relPath,
           added,
           removed,
@@ -156,6 +179,17 @@ export function buildAgentTools(
     {},
     async () => {
       const result = await adapter.build(ctx);
+      if (result.status === "failed") {
+        const newlyAffected = await adapter.findAffected(ctx, api, changes);
+        for (const location of newlyAffected) {
+          if (
+            !allowed.has(location.file) &&
+            isWithinRoot(ctx.root, location.file)
+          ) {
+            allowed.add(location.file);
+          }
+        }
+      }
       return {
         content: [{ type: "text" as const, text: formatCheck(result) }],
       };

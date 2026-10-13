@@ -98,6 +98,9 @@ async function ensureDockerCtx(
     adapter.lockfile,
     adapter.workspaceMarkers,
   );
+  if (adapter.assertSupportedLayout) {
+    await adapter.assertSupportedLayout(root);
+  }
   const volume = await dependencyVolumeName(
     root,
     path.join(root, adapter.lockfile),
@@ -502,6 +505,7 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
     const fix = await runFixAgent({
       ctx: dockerCtx,
       adapter,
+      apiEntry,
       affected,
       changes,
       budget,

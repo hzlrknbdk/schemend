@@ -17,6 +17,7 @@ import type { LanguageAdapter } from "./language-adapter.js";
 import type {
   AffectedLocation,
   ApiChange,
+  ApiEntry,
   CheckResult,
   Confidence,
   ReviewItem,
@@ -24,7 +25,8 @@ import type {
 
 export interface FixAgentInput {
   ctx: AdapterContext;
-  adapter: Pick<LanguageAdapter, "build" | "test">;
+  adapter: Pick<LanguageAdapter, "build" | "test" | "findAffected">;
+  apiEntry: ApiEntry;
   affected: AffectedLocation[];
   changes: ApiChange[];
   budget: Budget;
@@ -143,7 +145,8 @@ function extractPath(input: unknown): string | undefined {
 export async function runFixAgent(
   input: FixAgentInput,
 ): Promise<FixAgentOutput> {
-  const { ctx, adapter, affected, changes, budget, model, api } = input;
+  const { ctx, adapter, apiEntry, affected, changes, budget, model, api } =
+    input;
   const emit = createEventEmitter(input.onEvent);
 
   const fixStartedAt = Date.now();
@@ -205,10 +208,9 @@ export async function runFixAgent(
     ctx,
     adapter,
     affectedFiles,
-    {
-      api,
-      ...(input.onEvent !== undefined ? { onEvent: input.onEvent } : {}),
-    },
+    apiEntry,
+    changes,
+    input.onEvent,
   );
 
   let costUsd = 0;

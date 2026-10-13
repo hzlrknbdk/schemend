@@ -12,6 +12,14 @@ export interface LanguageAdapter {
   detect(root: string): Promise<boolean>;
   discoverApis(ctx: AdapterContext): Promise<ApiEntry[]>;
   regenerateClient?(ctx: AdapterContext, api: ApiEntry): Promise<void>;
+  /**
+   * Extra, language-specific "is this really a standalone package" check beyond the generic
+   * lockfile+workspaceMarkers one (SPEC §4) - e.g. Maven's multi-module reactor relationship
+   * can't be expressed as a simple ancestor-filename marker, since it needs parsing a <parent>
+   * block and comparing it against the file it points to. Throws (e.g. UnsupportedWorkspaceError)
+   * when the project isn't supported; called in addition to, not instead of, the generic check.
+   */
+  assertSupportedLayout?(root: string): Promise<void>;
   findAffected(
     ctx: AdapterContext,
     api: ApiEntry,

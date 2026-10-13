@@ -8,7 +8,12 @@ import {
   TOOL_NAMES,
 } from "./agent-tools.js";
 import type { CheckEvent } from "./events.js";
-import type { CheckResult } from "./types.js";
+import type {
+  AffectedLocation,
+  ApiChange,
+  ApiEntry,
+  CheckResult,
+} from "./types.js";
 
 let root: string;
 
@@ -18,6 +23,22 @@ const stubAdapter = {
     status: "passed",
   }),
   test: async (): Promise<CheckResult> => ({ name: "test", status: "passed" }),
+  findAffected: async (): Promise<AffectedLocation[]> => [],
+};
+
+const apiEntry: ApiEntry = {
+  name: "orders",
+  kind: "internal",
+  source: { type: "openapi", location: "../../services/orders/openapi.json" },
+  usedIn: ["src/lib"],
+};
+
+const change: ApiChange = {
+  id: "response-property-removed:GET:/orders#0",
+  severity: "breaking",
+  summary: "'totalPrice' was removed from the response",
+  target: "GET /orders",
+  source: { tool: "oasdiff", id: "response-property-removed", level: 2 },
 };
 
 function findTool(
@@ -57,6 +78,8 @@ describe("read_file", () => {
       { root, exec: async () => ({ exitCode: 0, stdout: "", stderr: "" }) },
       stubAdapter,
       ["src/a.ts"],
+      apiEntry,
+      [change],
     );
 
     const result = await findTool(tools, "read_file").handler(
@@ -73,6 +96,8 @@ describe("read_file", () => {
       { root, exec: async () => ({ exitCode: 0, stdout: "", stderr: "" }) },
       stubAdapter,
       [],
+      apiEntry,
+      [change],
     );
 
     const result = await findTool(tools, "read_file").handler(
@@ -92,6 +117,8 @@ describe("edit_file", () => {
       { root, exec: async () => ({ exitCode: 0, stdout: "", stderr: "" }) },
       stubAdapter,
       ["src/a.ts"],
+      apiEntry,
+      [change],
     );
 
     const result = await findTool(tools, "edit_file").handler(
@@ -104,7 +131,7 @@ describe("edit_file", () => {
     expect(await readFile(path.join(root, "src/a.ts"), "utf-8")).toBe("new");
   });
 
-  it("emits a file-edited event with the diff when events are passed in", async () => {
+  it("emits a file-edited event with the diff when onEvent is passed in", async () => {
     await mkdir(path.join(root, "src"), { recursive: true });
     await writeFile(path.join(root, "src/a.ts"), "line1\nline2\n");
     const events: CheckEvent[] = [];
@@ -112,7 +139,9 @@ describe("edit_file", () => {
       { root, exec: async () => ({ exitCode: 0, stdout: "", stderr: "" }) },
       stubAdapter,
       ["src/a.ts"],
-      { api: "orders", onEvent: (event) => events.push(event) },
+      apiEntry,
+      [change],
+      (event) => events.push(event),
     );
 
     await findTool(tools, "edit_file").handler(
@@ -141,7 +170,9 @@ describe("edit_file", () => {
       { root, exec: async () => ({ exitCode: 0, stdout: "", stderr: "" }) },
       stubAdapter,
       ["src/a.ts"],
-      { api: "orders", onEvent: (event) => events.push(event) },
+      apiEntry,
+      [change],
+      (event) => events.push(event),
     );
 
     await findTool(tools, "edit_file").handler(
@@ -159,6 +190,8 @@ describe("edit_file", () => {
       { root, exec: async () => ({ exitCode: 0, stdout: "", stderr: "" }) },
       stubAdapter,
       ["src/a.ts"],
+      apiEntry,
+      [change],
     );
 
     const result = await findTool(tools, "edit_file").handler(
@@ -172,6 +205,45 @@ describe("edit_file", () => {
       "untouched",
     );
   });
+
+  it("allows writing a file that run_build newly reported as affected", async () => {
+    await mkdir(path.join(root, "src"), { recursive: true });
+    await writeFile(path.join(root, "src/newly-affected.ts"), "old");
+    const newlyAffected: AffectedLocation[] = [
+      {
+        file: "src/newly-affected.ts",
+        line: 1,
+        changeId: change.id,
+        snippet: "order.totalPrice",
+      },
+    ];
+    const adapter = {
+      build: async (): Promise<CheckResult> => ({
+        name: "typecheck",
+        status: "failed" as const,
+      }),
+      test: stubAdapter.test,
+      findAffected: async (): Promise<AffectedLocation[]> => newlyAffected,
+    };
+    const { tools } = buildAgentTools(
+      { root, exec: async () => ({ exitCode: 0, stdout: "", stderr: "" }) },
+      adapter,
+      [],
+      apiEntry,
+      [change],
+    );
+
+    await findTool(tools, "run_build").handler({}, undefined);
+    const result = await findTool(tools, "edit_file").handler(
+      { path: "src/newly-affected.ts", content: "new" },
+      undefined,
+    );
+
+    expect(result.isError).toBeFalsy();
+    expect(
+      await readFile(path.join(root, "src/newly-affected.ts"), "utf-8"),
+    ).toBe("new");
+  });
 });
 
 describe("run_build / run_tests", () => {
@@ -180,6 +252,8 @@ describe("run_build / run_tests", () => {
       { root, exec: async () => ({ exitCode: 0, stdout: "", stderr: "" }) },
       stubAdapter,
       [],
+      apiEntry,
+      [change],
     );
 
     const result = await findTool(tools, "run_build").handler({}, undefined);
@@ -187,6 +261,62 @@ describe("run_build / run_tests", () => {
     expect(result.content).toEqual([
       { type: "text", text: "typecheck: passed" },
     ]);
+  });
+
+  it("does not call findAffected when the build passes", async () => {
+    let findAffectedCalls = 0;
+    const adapter = {
+      build: stubAdapter.build,
+      test: stubAdapter.test,
+      findAffected: async (): Promise<AffectedLocation[]> => {
+        findAffectedCalls += 1;
+        return [];
+      },
+    };
+    const { tools } = buildAgentTools(
+      { root, exec: async () => ({ exitCode: 0, stdout: "", stderr: "" }) },
+      adapter,
+      [],
+      apiEntry,
+      [change],
+    );
+
+    await findTool(tools, "run_build").handler({}, undefined);
+
+    expect(findAffectedCalls).toBe(0);
+  });
+
+  it("ignores a newly-affected path findAffected reports outside the project root", async () => {
+    const adapter = {
+      build: async (): Promise<CheckResult> => ({
+        name: "typecheck",
+        status: "failed" as const,
+      }),
+      test: stubAdapter.test,
+      findAffected: async (): Promise<AffectedLocation[]> => [
+        {
+          file: "../outside.ts",
+          line: 1,
+          changeId: change.id,
+          snippet: "",
+        },
+      ],
+    };
+    const { tools } = buildAgentTools(
+      { root, exec: async () => ({ exitCode: 0, stdout: "", stderr: "" }) },
+      adapter,
+      [],
+      apiEntry,
+      [change],
+    );
+
+    await findTool(tools, "run_build").handler({}, undefined);
+    const result = await findTool(tools, "edit_file").handler(
+      { path: "../outside.ts", content: "hacked" },
+      undefined,
+    );
+
+    expect(result.isError).toBe(true);
   });
 
   it("run_tests surfaces a failing adapter.test result with its detail", async () => {
@@ -197,11 +327,14 @@ describe("run_build / run_tests", () => {
         status: "failed",
         detail: "1 failing",
       }),
+      findAffected: stubAdapter.findAffected,
     };
     const { tools } = buildAgentTools(
       { root, exec: async () => ({ exitCode: 0, stdout: "", stderr: "" }) },
       failingAdapter,
       [],
+      apiEntry,
+      [change],
     );
 
     const result = await findTool(tools, "run_tests").handler({}, undefined);
