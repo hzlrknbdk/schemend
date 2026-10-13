@@ -190,6 +190,72 @@ describe("runScenario", () => {
     expect(rows[0]?.result).toBe("correct-fix");
   });
 
+  it("ignores forbidden strings inside target/ when a pom.xml sits next to it", async () => {
+    const dir = await tempDir();
+    await writeFile(path.join(dir, "pom.xml"), "<project></project>");
+    await mkdir(path.join(dir, "target", "classes"), { recursive: true });
+    await writeFile(
+      path.join(dir, "target", "classes", "Order.java"),
+      "order.totalPrice",
+    );
+    await writeFile(path.join(dir, "page.ts"), "total.amount");
+    const solver: Solver = async () => ({
+      changedFiles: ["page.ts"],
+      flags: [],
+    });
+
+    const rows = await runScenario(
+      scenario,
+      { "apps/checkout-web": dir },
+      solver,
+    );
+    expect(rows[0]?.result).toBe("correct-fix");
+  });
+
+  it("ignores forbidden strings inside bin/ and obj/ when a .csproj sits next to them", async () => {
+    const dir = await tempDir();
+    await writeFile(
+      path.join(dir, "Notification.csproj"),
+      "<Project></Project>",
+    );
+    await mkdir(path.join(dir, "bin"), { recursive: true });
+    await mkdir(path.join(dir, "obj"), { recursive: true });
+    await writeFile(path.join(dir, "bin", "Order.cs"), "order.totalPrice");
+    await writeFile(path.join(dir, "obj", "Order.cs"), "order.totalPrice");
+    await writeFile(path.join(dir, "page.ts"), "total.amount");
+    const solver: Solver = async () => ({
+      changedFiles: ["page.ts"],
+      flags: [],
+    });
+
+    const rows = await runScenario(
+      scenario,
+      { "apps/checkout-web": dir },
+      solver,
+    );
+    expect(rows[0]?.result).toBe("correct-fix");
+  });
+
+  it("still scans a bin/ directory with no .csproj next to it", async () => {
+    const dir = await tempDir();
+    await mkdir(path.join(dir, "bin"), { recursive: true });
+    await writeFile(
+      path.join(dir, "bin", "legacy-script.ts"),
+      "order.totalPrice",
+    );
+    const solver: Solver = async () => ({
+      changedFiles: ["bin/legacy-script.ts"],
+      flags: [],
+    });
+
+    const rows = await runScenario(
+      scenario,
+      { "apps/checkout-web": dir },
+      solver,
+    );
+    expect(rows[0]?.result).toBe("wrong-fix");
+  });
+
   it("does not flag a different field that merely shares the needle's prefix", async () => {
     const dir = await tempDir();
     await writeFile(path.join(dir, "page.ts"), "order.totalPriceWithTax");

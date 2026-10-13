@@ -41,15 +41,33 @@ export async function discoverScenarios(
   return scenarios;
 }
 
-const SKIP_DIRS = new Set(["node_modules", ".next"]);
+const ALWAYS_SKIP_DIRS = new Set(["node_modules", ".next"]);
 const SKIP_FILES = new Set(["orders-api.d.ts"]);
+
+// target/bin/obj only mean "build output" next to their own project file; skipping them
+// unconditionally would also skip a hand-written directory that merely shares the name.
+function isBuildOutputDir(dirName: string, siblingNames: Set<string>): boolean {
+  if (dirName === "target") {
+    return siblingNames.has("pom.xml") || siblingNames.has("build.gradle");
+  }
+  if (dirName === "bin" || dirName === "obj") {
+    return [...siblingNames].some((name) => name.endsWith(".csproj"));
+  }
+  return false;
+}
 
 async function collectScannableFiles(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
+  const siblingNames = new Set(entries.map((entry) => entry.name));
   const files: string[] = [];
   for (const entry of entries) {
     if (entry.isDirectory()) {
-      if (SKIP_DIRS.has(entry.name)) continue;
+      if (
+        ALWAYS_SKIP_DIRS.has(entry.name) ||
+        isBuildOutputDir(entry.name, siblingNames)
+      ) {
+        continue;
+      }
       files.push(...(await collectScannableFiles(path.join(dir, entry.name))));
       continue;
     }
