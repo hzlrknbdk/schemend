@@ -47,7 +47,7 @@ function isCancelled(abortController: AbortController | undefined): boolean {
   return abortController?.signal.aborted === true;
 }
 
-async function pickAdapter(
+export async function pickAdapter(
   adapters: LanguageAdapter[],
   root: string,
 ): Promise<LanguageAdapter | undefined> {
@@ -86,13 +86,19 @@ async function ensureBranch(ctx: AdapterContext): Promise<void> {
  * stale node_modules - see docker-exec.ts), prunes any older volume for this same root, then
  * returns a context whose exec runs with that volume mounted and the network disabled.
  */
-async function ensureDockerCtx(
+export interface DockerCtx {
+  ctx: AdapterContext;
+  /** The exact dependency volume ensureDockerCtx created/reused for `root` - callers that need to remove it (eval's per-run cleanup) must use this name, never a prefix/listing match. */
+  volume: string;
+}
+
+export async function ensureDockerCtx(
   adapter: LanguageAdapter,
   root: string,
   exec: Exec,
   abortController: AbortController | undefined,
   containerUser: ContainerUser | undefined,
-): Promise<AdapterContext> {
+): Promise<DockerCtx> {
   await assertStandaloneProject(
     root,
     adapter.lockfile,
@@ -127,13 +133,16 @@ async function ensureDockerCtx(
     ...(containerUser !== undefined ? { user: containerUser } : {}),
   });
   return {
-    root,
-    exec: createDockerExec(exec, root, adapter.dockerImage, {
-      network: "none",
-      volumes: { [volume]: adapter.dependencyVolumePath },
-      ...(abortController !== undefined ? { abortController } : {}),
-      ...(containerUser !== undefined ? { user: containerUser } : {}),
-    }),
+    ctx: {
+      root,
+      exec: createDockerExec(exec, root, adapter.dockerImage, {
+        network: "none",
+        volumes: { [volume]: adapter.dependencyVolumePath },
+        ...(abortController !== undefined ? { abortController } : {}),
+        ...(containerUser !== undefined ? { user: containerUser } : {}),
+      }),
+    },
+    volume,
   };
 }
 
@@ -283,13 +292,13 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
     const baselineStartedAt = Date.now();
     emit({ type: "step-started", api, step: "baseline" });
     if (!dockerCtxCache) {
-      dockerCtxCache = await ensureDockerCtx(
+      ({ ctx: dockerCtxCache } = await ensureDockerCtx(
         adapter,
         root,
         exec,
         options.abortController,
         options.containerUser,
-      );
+      ));
     }
     const dockerCtx: AdapterContext = dockerCtxCache;
     const baselineBuild = await adapter.build(dockerCtx);
