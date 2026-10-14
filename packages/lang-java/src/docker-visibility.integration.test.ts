@@ -214,5 +214,41 @@ describe.runIf(await dockerAvailable())(
       const testResult = await javaAdapter.test(ctx);
       expect(testResult).toEqual({ name: "test", status: "passed" });
     }, 180_000);
+
+    // installCommand's own `mvn test` can hit the exact same compile error a genuinely broken
+    // baseline would - `-Dmaven.test.failure.ignore=true` only covers a failed test *assertion*,
+    // not this (verified: without `|| true`, this install command alone exits 1 here). Without
+    // `|| true`, ensureContainerDeps would throw and crash runCheck with an "install failed"
+    // error instead of the real baseline-failed path (check.ts: `adapter.build`/`test` after
+    // ensureDockerCtx returns, unaffected by install's own exit code, are what set
+    // StepFailureReason "baseline-failed").
+    it("doesn't throw from ensureDockerCtx when the baseline itself doesn't compile - adapter.build reports the failure instead of install crashing", async () => {
+      await write(
+        "apps/consumer/src/main/java/com/example/OrderReader.java",
+        [
+          "package com.example;",
+          "",
+          "public class OrderReader {",
+          "  public static double total(Object order) {",
+          "    return thisMethodDoesNotExist(order);",
+          "  }",
+          "}",
+          "",
+        ].join("\n"),
+      );
+
+      const { ctx } = await ensureDockerCtx(
+        javaAdapter,
+        consumerRoot,
+        repoRoot,
+        (command) => realExec(command),
+        undefined,
+        undefined,
+      );
+
+      const buildResult = await javaAdapter.build(ctx);
+      expect(buildResult.status).toBe("failed");
+      expect(buildResult.detail).toContain("thisMethodDoesNotExist");
+    }, 180_000);
   },
 );

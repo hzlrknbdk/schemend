@@ -44,10 +44,12 @@ export const javaAdapter: LanguageAdapter = {
   // `dependency:go-offline` alone misses artifacts Maven only resolves once a real goal actually
   // needs them (surefire's own JUnit provider, some test-scope transitives - verified empirically,
   // see DECISIONS.md): running the project's real tests once is the only combination proven to
-  // populate everything a later --network none test-compile/test will need. `failure.ignore`
-  // means an actually-broken baseline doesn't crash this step with an "install failed" error - the
-  // real build/test calls right after this (unaffected by it) are what determine baseline pass/fail.
-  installCommand: "mvn -q -B test -Dmaven.test.failure.ignore=true",
+  // populate everything a later --network none test-compile/test will need. `failure.ignore` only
+  // covers a failed test *assertion*, not a genuine compile error (verified: a broken main class
+  // still exits 1) - `|| true` is what actually guarantees this step can never throw and crash
+  // ensureContainerDeps/runCheck; the real build/test calls right after this (unaffected by it,
+  // same broad mount, --network none) are what determine baseline pass/fail.
+  installCommand: "mvn -q -B test -Dmaven.test.failure.ignore=true || true",
   lockfile: "pom.xml",
   workspaceMarkers: [],
   dependencyVolumePath: "/opt/maven-repo",
