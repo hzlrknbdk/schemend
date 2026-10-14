@@ -6,6 +6,8 @@ export interface ConsumerDockerExec {
   setupExec: Exec;
   /** For scenario.json's `checks` commands - network none, matching the real product's build/test (SPEC §6). */
   checkExec: Exec;
+  /** Removes the exact dependency volume ensureDockerCtx created for this consumer. Best-effort, never throws (same reasoning as pruneStaleDependencyVolumes). */
+  cleanup: () => Promise<void>;
 }
 
 /**
@@ -43,6 +45,9 @@ export function createConsumerExecFactory(
     return {
       setupExec,
       checkExec: ctx.exec,
+      cleanup: async () => {
+        await hostExec(`docker volume rm ${volume}`);
+      },
     };
   };
 }

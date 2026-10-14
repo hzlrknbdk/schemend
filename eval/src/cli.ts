@@ -67,6 +67,7 @@ export async function runScenarioInWorktree(
 ): Promise<RunnerRow[]> {
   const sourceRoot = resolveSourceRoot(scenario.source);
   const worktree = await createWorktree(sourceRoot, scenario.ref);
+  const volumeCleanups: Array<() => Promise<void>> = [];
   try {
     const rows: RunnerRow[] = [];
     const ready: ReadyConsumer[] = [];
@@ -74,6 +75,7 @@ export async function runScenarioInWorktree(
     for (const [key, expectation] of Object.entries(scenario.consumers)) {
       const dir = path.join(worktree.dir, key);
       const consumerExec = await createConsumerExec(dir);
+      volumeCleanups.push(consumerExec.cleanup);
 
       await runSetup(expectation, consumerExec.setupExec);
 
@@ -136,6 +138,10 @@ export async function runScenarioInWorktree(
 
     return rows;
   } finally {
+    // Each consumer's dependency volume is specific to this run's own tmp worktree path (see
+    // docker.ts), so it's thrown away alongside the worktree rather than left for a cache that
+    // would never be found again (schemend-deps-* volume names are keyed by root path).
+    await Promise.all(volumeCleanups.map((cleanup) => cleanup()));
     await worktree.cleanup();
   }
 }
