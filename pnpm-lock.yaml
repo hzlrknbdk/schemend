@@ -203,6 +203,9 @@ importers:
       '@schemend/core':
         specifier: workspace:*
         version: link:../core
+      '@schemend/lang-csharp':
+        specifier: workspace:*
+        version: link:../lang-csharp
       '@schemend/lang-java':
         specifier: workspace:*
         version: link:../lang-java
@@ -245,6 +248,15 @@ importers:
       zod:
         specifier: ^4.6.5
         version: 4.6.5
+
+  packages/lang-csharp:
+    dependencies:
+      '@schemend/core':
+        specifier: workspace:*
+        version: link:../core
+      fast-xml-parser:
+        specifier: ^5.11.2
+        version: 5.11.2
 
   packages/lang-java:
     dependencies:
