@@ -8,6 +8,7 @@ import {
   runCheck,
   VERSION,
 } from "@schemend/core";
+import { csharpAdapter } from "@schemend/lang-csharp";
 import { javaAdapter } from "@schemend/lang-java";
 import { typescriptAdapter } from "@schemend/lang-typescript";
 import { Command } from "commander";
@@ -115,7 +116,7 @@ program
           config,
           root,
           exec: realExec,
-          adapters: [typescriptAdapter, javaAdapter],
+          adapters: [typescriptAdapter, javaAdapter, csharpAdapter],
           abortController,
           ...(user !== undefined ? { containerUser: user } : {}),
           onEvent: (event) => {
