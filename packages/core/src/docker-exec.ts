@@ -111,6 +111,15 @@ export function rebaseDependencyVolumePath(
   return `${containerConsumerPath}/${dependencyVolumePath.slice(prefix.length)}`;
 }
 
+export function resolveContainerPath(
+  rawPath: string,
+  repoRoot: string | undefined,
+): string {
+  const prefix = "/workspace/";
+  if (repoRoot === undefined || !rawPath.startsWith(prefix)) return rawPath;
+  return path.join(repoRoot, rawPath.slice(prefix.length));
+}
+
 /**
  * Removes every dependency volume for `root` except `currentVolume` (e.g. ones left behind by an
  * older lockfile - see dependencyVolumeName). Best-effort: a listing or removal failure (including

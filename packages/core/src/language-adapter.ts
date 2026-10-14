@@ -38,8 +38,20 @@ export interface LanguageAdapter {
   test(ctx: AdapterContext): Promise<CheckResult>;
   dockerImage: string;
   dockerfile?: string;
-  installCommand: string;
-  lockfile: string;
+  /**
+   * A fixed command for most adapters; a resolver when the right target depends on the
+   * consumer's own layout (e.g. C#'s solution-or-project discovery, see packages/lang-csharp) -
+   * it must restore the exact same target build/test/findAffected will later use, or a later
+   * `--no-restore` call fails against an unrestored project.
+   */
+  installCommand: string | ((root: string) => Promise<string>);
+  /**
+   * A fixed filename for most adapters (checked directly at `root`); a resolver when no single
+   * well-known filename reliably sits there (e.g. C#, whose project file has an arbitrary name
+   * and may live below `root`) - must return a root-relative path. Used both by
+   * assertStandaloneProject (SPEC §4) and to key the dependency volume's content hash.
+   */
+  lockfile: string | ((root: string) => Promise<string>);
   workspaceMarkers: readonly string[];
   dependencyVolumePath: string;
 }

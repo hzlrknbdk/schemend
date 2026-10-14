@@ -108,11 +108,12 @@ export async function ensureDockerCtx(
   abortController: AbortController | undefined,
   containerUser: ContainerUser | undefined,
 ): Promise<DockerCtx> {
-  await assertStandaloneProject(
-    root,
-    adapter.lockfile,
-    adapter.workspaceMarkers,
-  );
+  const lockfile =
+    typeof adapter.lockfile === "function"
+      ? await adapter.lockfile(root)
+      : adapter.lockfile;
+
+  await assertStandaloneProject(root, lockfile, adapter.workspaceMarkers);
   if (adapter.assertSupportedLayout) {
     await adapter.assertSupportedLayout(root);
   }
@@ -129,10 +130,7 @@ export async function ensureDockerCtx(
     containerConsumerPath,
   );
 
-  const volume = await dependencyVolumeName(
-    root,
-    path.join(root, adapter.lockfile),
-  );
+  const volume = await dependencyVolumeName(root, path.join(root, lockfile));
   await ensureDockerImage(exec, adapter.dockerImage, adapter.dockerfile);
   await pruneStaleDependencyVolumes(exec, root, volume);
   if (containerUser) {
@@ -155,18 +153,24 @@ export async function ensureDockerCtx(
     ...(containerUser !== undefined ? { user: containerUser } : {}),
   };
 
+  const installCommand =
+    typeof adapter.installCommand === "function"
+      ? await adapter.installCommand(root)
+      : adapter.installCommand;
+
   await ensureContainerDeps({
     exec,
     root: repoRoot,
     image: adapter.dockerImage,
     volume,
     volumeTarget,
-    installCommand: adapter.installCommand,
+    installCommand,
     ...sharedMountOptions,
   });
   return {
     ctx: {
       root,
+      repoRoot,
       exec: createDockerExec(exec, repoRoot, adapter.dockerImage, {
         network: "none",
         volumes: { [volume]: volumeTarget },
@@ -388,7 +392,7 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
     const regenerateStartedAt = Date.now();
     emit({ type: "step-started", api, step: "regenerate" });
     if (adapter.regenerateClient) {
-      await adapter.regenerateClient(ctx, apiEntry);
+      await adapter.regenerateClient(dockerCtx, apiEntry);
     }
     emit({
       type: "step-finished",
@@ -400,7 +404,7 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
 
     const impactStartedAt = Date.now();
     emit({ type: "step-started", api, step: "impact" });
-    const affected = await adapter.findAffected(ctx, apiEntry, changes);
+    const affected = await adapter.findAffected(dockerCtx, apiEntry, changes);
     emit({ type: "affected-found", api, affected });
     emit({
       type: "step-finished",
