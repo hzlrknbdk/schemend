@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("./exec.js", () => ({ runCommand: vi.fn() }));
 
 import { runScenarioInWorktree } from "./cli.js";
+import type { ConsumerDockerExec } from "./docker.js";
 import type { CommandResult } from "./exec.js";
 import { runCommand } from "./exec.js";
 import type { Scenario } from "./scenario.js";
@@ -20,6 +21,16 @@ function ok(stdout = ""): CommandResult {
 
 function fail(stdout = "", stderr = ""): CommandResult {
   return { exitCode: 1, stdout, stderr };
+}
+
+// Unit tests don't exercise Docker at all (see docker.ts) - a plain host exec scoped to the
+// consumer's own worktree directory, same behavior these tests already expected before setup/
+// checks moved onto createDockerExec.
+async function fakeCreateConsumerExec(
+  dir: string,
+): Promise<ConsumerDockerExec> {
+  const exec = (command: string) => runCommand(command, dir);
+  return { setupExec: exec, checkExec: exec };
 }
 
 describe("runScenarioInWorktree", () => {
@@ -54,7 +65,11 @@ describe("runScenarioInWorktree", () => {
       },
     };
 
-    const rows = await runScenarioInWorktree(scenario, solver);
+    const rows = await runScenarioInWorktree(
+      scenario,
+      solver,
+      fakeCreateConsumerExec,
+    );
 
     expect(rows).toEqual([
       {
@@ -117,10 +132,14 @@ describe("runScenarioInWorktree", () => {
       },
     };
 
-    await runScenarioInWorktree(scenario, async () => ({
-      changedFiles: [],
-      flags: [],
-    }));
+    await runScenarioInWorktree(
+      scenario,
+      async () => ({
+        changedFiles: [],
+        flags: [],
+      }),
+      fakeCreateConsumerExec,
+    );
 
     expect(sawSchemaApplied).toEqual([false, true]);
   });

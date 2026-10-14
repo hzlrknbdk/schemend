@@ -1,15 +1,14 @@
-import type { CheckResult } from "@schemend/core";
-import { runCommand } from "./exec.js";
+import type { CheckResult, Exec } from "@schemend/core";
 
 export type { CheckResult } from "@schemend/core";
 
 export async function runChecks(
-  dir: string,
+  exec: Exec,
   commands: string[],
 ): Promise<CheckResult[]> {
   const results: CheckResult[] = [];
   for (const command of commands) {
-    const { exitCode, stdout, stderr } = await runCommand(command, dir);
+    const { exitCode, stdout, stderr } = await exec(command);
     results.push(
       exitCode === 0
         ? { name: command, status: "passed" }

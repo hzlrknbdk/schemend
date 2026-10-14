@@ -181,6 +181,12 @@ importers:
       '@schemend/core':
         specifier: workspace:*
         version: link:../packages/core
+      '@schemend/lang-java':
+        specifier: workspace:*
+        version: link:../packages/lang-java
+      '@schemend/lang-typescript':
+        specifier: workspace:*
+        version: link:../packages/lang-typescript
       zod:
         specifier: ^4.6.5
         version: 4.6.5

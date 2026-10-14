@@ -1,6 +1,8 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import type { Exec } from "@schemend/core";
 import { type CheckResult, runChecks } from "./checks.js";
+import { runCommand } from "./exec.js";
 import { judge, type Verdict } from "./judge.js";
 import { parseScenario, type Scenario } from "./scenario.js";
 import { noopSolver, type Solver } from "./solver.js";
@@ -104,10 +106,17 @@ async function findRemainingMatches(
   return [...found];
 }
 
+/**
+ * `consumerExecs` is how checks actually run (Docker-backed in production, see cli.ts); a
+ * consumer missing from it falls back to a plain host exec scoped to its own directory - a
+ * convenience for unit tests that don't care about Docker, never exercised by the real
+ * `pnpm eval` entry point, which always supplies one exec per consumer.
+ */
 export async function runScenario(
   scenario: Scenario,
   consumerDirs: Record<string, string>,
   solver: Solver = noopSolver,
+  consumerExecs?: Record<string, Exec>,
 ): Promise<RunnerRow[]> {
   const rows: RunnerRow[] = [];
   for (const [consumerKey, expectation] of Object.entries(scenario.consumers)) {
@@ -115,6 +124,8 @@ export async function runScenario(
     if (!dir) {
       throw new Error(`no directory given for consumer "${consumerKey}"`);
     }
+    const exec: Exec =
+      consumerExecs?.[consumerKey] ?? ((command) => runCommand(command, dir));
     const result = await solver(scenario, dir);
     const remainingMatches = await findRemainingMatches(
       dir,
@@ -122,7 +133,7 @@ export async function runScenario(
     );
     const checks =
       expectation.checks && expectation.checks.length > 0
-        ? await runChecks(dir, expectation.checks)
+        ? await runChecks(exec, expectation.checks)
         : undefined;
     rows.push({
       scenarioId: scenario.id,
