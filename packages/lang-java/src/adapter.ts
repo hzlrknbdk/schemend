@@ -41,7 +41,13 @@ export const javaAdapter: LanguageAdapter = {
   test,
   dockerImage: `schemend-lang-java:3.9.9-temurin21-${DOCKERFILE_HASH}`,
   dockerfile: DOCKERFILE,
-  installCommand: "mvn -q -B dependency:go-offline",
+  // `dependency:go-offline` alone misses artifacts Maven only resolves once a real goal actually
+  // needs them (surefire's own JUnit provider, some test-scope transitives - verified empirically,
+  // see DECISIONS.md): running the project's real tests once is the only combination proven to
+  // populate everything a later --network none test-compile/test will need. `failure.ignore`
+  // means an actually-broken baseline doesn't crash this step with an "install failed" error - the
+  // real build/test calls right after this (unaffected by it) are what determine baseline pass/fail.
+  installCommand: "mvn -q -B test -Dmaven.test.failure.ignore=true",
   lockfile: "pom.xml",
   workspaceMarkers: [],
   dependencyVolumePath: "/opt/maven-repo",
