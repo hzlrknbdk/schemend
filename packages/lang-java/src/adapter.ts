@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import type { LanguageAdapter } from "@schemend/core";
 import { build, test } from "./checks.js";
 import {
+  assertDockerVisibility,
   assertNotMultiModule,
   detect,
   discoverApis,
@@ -34,6 +35,7 @@ export const javaAdapter: LanguageAdapter = {
   discoverApis,
   regenerateClient,
   assertSupportedLayout: assertNotMultiModule,
+  assertDockerVisibility,
   findAffected,
   build,
   test,

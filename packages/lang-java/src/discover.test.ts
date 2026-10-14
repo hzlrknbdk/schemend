@@ -1,9 +1,10 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { UnsupportedWorkspaceError } from "@schemend/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  assertDockerVisibility,
   assertNotMultiModule,
   detect,
   discoverApis,
@@ -448,5 +449,143 @@ describe("regenerateClient", () => {
     await regenerateClient({ root, exec }, packageApi);
 
     expect(called).toBe(false);
+  });
+});
+
+describe("assertDockerVisibility", () => {
+  let repoRoot: string;
+  let consumerRoot: string;
+
+  function pomReferencing(inputSpec: string): string {
+    return pomWith(`
+  <groupId>com.schemenddemo</groupId>
+  <artifactId>invoice-service</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <properties>
+    <orders.openapi.spec>${inputSpec}</orders.openapi.spec>
+  </properties>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.openapitools</groupId>
+        <artifactId>openapi-generator-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <configuration>
+              <inputSpec>\${orders.openapi.spec}</inputSpec>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+`);
+  }
+
+  async function writePom(inputSpec: string): Promise<void> {
+    await writeFile(
+      path.join(consumerRoot, "pom.xml"),
+      pomReferencing(inputSpec),
+    );
+  }
+
+  beforeEach(async () => {
+    repoRoot = await mkdtemp(path.join(tmpdir(), "schemend-lang-java-repo-"));
+    consumerRoot = path.join(repoRoot, "services", "invoice");
+    await mkdir(consumerRoot, { recursive: true });
+  });
+
+  afterEach(async () => {
+    await rm(repoRoot, { recursive: true, force: true });
+  });
+
+  it("passes when inputSpec resolves to a real file inside repoRoot", async () => {
+    await mkdir(path.join(repoRoot, "services", "orders"), {
+      recursive: true,
+    });
+    await writeFile(
+      path.join(repoRoot, "services", "orders", "openapi.json"),
+      "{}",
+    );
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: fixture source text (Maven property syntax), not a real template literal.
+    await writePom("${project.basedir}/../orders/openapi.json");
+
+    await expect(
+      assertDockerVisibility(consumerRoot, repoRoot),
+    ).resolves.toBeUndefined();
+  });
+
+  it("does nothing when the pom has no openapi-generator-maven-plugin execution", async () => {
+    await writeFile(
+      path.join(consumerRoot, "pom.xml"),
+      pomWith(`
+  <groupId>com.schemenddemo</groupId>
+  <artifactId>invoice-service</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+`),
+    );
+
+    await expect(
+      assertDockerVisibility(consumerRoot, repoRoot),
+    ).resolves.toBeUndefined();
+  });
+
+  it("throws when inputSpec resolves outside repoRoot", async () => {
+    const outside = await mkdtemp(
+      path.join(tmpdir(), "schemend-lang-java-outside-"),
+    );
+    try {
+      const outsideFile = path.join(outside, "openapi.json");
+      await writeFile(outsideFile, "{}");
+      const relFromConsumer = path.relative(consumerRoot, outsideFile);
+      await writePom(`\${project.basedir}/${relFromConsumer}`);
+
+      await expect(
+        assertDockerVisibility(consumerRoot, repoRoot),
+      ).rejects.toThrow(/outside the repo root/);
+    } finally {
+      await rm(outside, { recursive: true, force: true });
+    }
+  });
+
+  it("throws when inputSpec escapes repoRoot through a symlink", async () => {
+    const outside = await mkdtemp(
+      path.join(tmpdir(), "schemend-lang-java-outside-"),
+    );
+    try {
+      await writeFile(path.join(outside, "real-openapi.json"), "{}");
+      await mkdir(path.join(repoRoot, "services", "orders"), {
+        recursive: true,
+      });
+      await symlink(
+        path.join(outside, "real-openapi.json"),
+        path.join(repoRoot, "services", "orders", "openapi.json"),
+      );
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: fixture source text (Maven property syntax), not a real template literal.
+      await writePom("${project.basedir}/../orders/openapi.json");
+
+      await expect(
+        assertDockerVisibility(consumerRoot, repoRoot),
+      ).rejects.toThrow(/outside the repo root/);
+    } finally {
+      await rm(outside, { recursive: true, force: true });
+    }
+  });
+
+  it("throws when inputSpec is a URL", async () => {
+    await writePom("https://example.com/openapi.json");
+
+    await expect(
+      assertDockerVisibility(consumerRoot, repoRoot),
+    ).rejects.toThrow(/URL/);
+  });
+
+  it("throws when inputSpec doesn't exist", async () => {
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: fixture source text (Maven property syntax), not a real template literal.
+    await writePom("${project.basedir}/../orders/openapi.json");
+
+    await expect(
+      assertDockerVisibility(consumerRoot, repoRoot),
+    ).rejects.toThrow(/doesn't exist/);
   });
 });

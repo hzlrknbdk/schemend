@@ -13,10 +13,11 @@ import {
   ensureContainerDeps,
   ensureDockerImage,
   pruneStaleDependencyVolumes,
+  rebaseDependencyVolumePath,
 } from "./docker-exec.js";
 import type { CheckEvent } from "./events.js";
 import { createEventEmitter, EVENT_SCHEMA_VERSION } from "./events.js";
-import { writeFileAtRef } from "./git.js";
+import { findRepoRoot, writeFileAtRef } from "./git.js";
 import type { LanguageAdapter } from "./language-adapter.js";
 import { DockerUnavailableError, diffSchemas } from "./oasdiff.js";
 import type {
@@ -81,10 +82,17 @@ async function ensureBranch(ctx: AdapterContext): Promise<void> {
 
 /**
  * Builds the Docker-backed AdapterContext build/test run through (SPEC §4/§6): ensures the
- * adapter's image and dependency volume exist (installing with network access into a volume
- * keyed by the lockfile's content, so a dependency change lands on a fresh volume instead of
- * stale node_modules - see docker-exec.ts), prunes any older volume for this same root, then
+ * adapter's image and dependency volume exist, prunes any older volume for this same root, then
  * returns a context whose exec runs with that volume mounted and the network disabled.
+ *
+ * Both install and the returned exec mount `repoRoot` read-only at /workspace, with `root`
+ * layered read-write on top at its real position under it, cwd'd there - not just `root` alone -
+ * so a sibling schema reference (SPEC §5's "../orders/openapi.json") resolves correctly
+ * regardless of how many `../` segments it takes to get there. They differ only in network:
+ * install gets the registry (`bridge`), the final exec is `none` - see DECISIONS.md. This is why
+ * install needs its own visibility check: unlike the final exec, it runs with network access, so
+ * `assertDockerVisibility` validates anything a pom.xml/build file points to before any of this
+ * is mounted into a container that can reach the internet.
  */
 export interface DockerCtx {
   ctx: AdapterContext;
@@ -95,6 +103,7 @@ export interface DockerCtx {
 export async function ensureDockerCtx(
   adapter: LanguageAdapter,
   root: string,
+  repoRoot: string,
   exec: Exec,
   abortController: AbortController | undefined,
   containerUser: ContainerUser | undefined,
@@ -107,6 +116,19 @@ export async function ensureDockerCtx(
   if (adapter.assertSupportedLayout) {
     await adapter.assertSupportedLayout(root);
   }
+  if (adapter.assertDockerVisibility) {
+    await adapter.assertDockerVisibility(root, repoRoot);
+  }
+
+  const containerConsumerPath = path.posix.join(
+    "/workspace",
+    path.relative(repoRoot, root),
+  );
+  const volumeTarget = rebaseDependencyVolumePath(
+    adapter.dependencyVolumePath,
+    containerConsumerPath,
+  );
+
   const volume = await dependencyVolumeName(
     root,
     path.join(root, adapter.lockfile),
@@ -122,24 +144,33 @@ export async function ensureDockerCtx(
       containerUser,
     );
   }
-  await ensureContainerDeps({
-    exec,
-    root,
-    image: adapter.dockerImage,
-    volume,
-    volumeTarget: adapter.dependencyVolumePath,
-    installCommand: adapter.installCommand,
+
+  const sharedMountOptions = {
+    readOnlyRoot: true as const,
+    extraMounts: [
+      { source: root, target: containerConsumerPath, readOnly: false },
+    ],
+    cwd: containerConsumerPath,
     ...(abortController !== undefined ? { abortController } : {}),
     ...(containerUser !== undefined ? { user: containerUser } : {}),
+  };
+
+  await ensureContainerDeps({
+    exec,
+    root: repoRoot,
+    image: adapter.dockerImage,
+    volume,
+    volumeTarget,
+    installCommand: adapter.installCommand,
+    ...sharedMountOptions,
   });
   return {
     ctx: {
       root,
-      exec: createDockerExec(exec, root, adapter.dockerImage, {
+      exec: createDockerExec(exec, repoRoot, adapter.dockerImage, {
         network: "none",
-        volumes: { [volume]: adapter.dependencyVolumePath },
-        ...(abortController !== undefined ? { abortController } : {}),
-        ...(containerUser !== undefined ? { user: containerUser } : {}),
+        volumes: { [volume]: volumeTarget },
+        ...sharedMountOptions,
       }),
     },
     volume,
@@ -292,9 +323,11 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
     const baselineStartedAt = Date.now();
     emit({ type: "step-started", api, step: "baseline" });
     if (!dockerCtxCache) {
+      const repoRoot = await findRepoRoot(exec);
       ({ ctx: dockerCtxCache } = await ensureDockerCtx(
         adapter,
         root,
+        repoRoot,
         exec,
         options.abortController,
         options.containerUser,

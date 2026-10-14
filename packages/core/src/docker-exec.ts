@@ -95,6 +95,23 @@ export async function dependencyVolumeName(
 }
 
 /**
+ * Re-anchors a `LanguageAdapter.dependencyVolumePath` (e.g. "/workspace/node_modules", written
+ * assuming /workspace *is* the consumer root) under `containerConsumerPath` instead, for a
+ * container where /workspace is mounted as the whole repo and the consumer only lives at a
+ * subpath of it (see ensureDockerCtx, check.ts). A path that isn't under "/workspace" at all
+ * (e.g. Java's "/opt/maven-repo", a location deliberately unrelated to the project tree) is
+ * returned unchanged - it was never meant to move when the mount's meaning changes.
+ */
+export function rebaseDependencyVolumePath(
+  dependencyVolumePath: string,
+  containerConsumerPath: string,
+): string {
+  const prefix = "/workspace/";
+  if (!dependencyVolumePath.startsWith(prefix)) return dependencyVolumePath;
+  return `${containerConsumerPath}/${dependencyVolumePath.slice(prefix.length)}`;
+}
+
+/**
  * Removes every dependency volume for `root` except `currentVolume` (e.g. ones left behind by an
  * older lockfile - see dependencyVolumeName). Best-effort: a listing or removal failure (including
  * a volume still in use by another running `schemend check`) is silently skipped, never thrown -
@@ -152,6 +169,13 @@ export interface ContainerUser {
   gid: number;
 }
 
+/** An additional bind mount beyond `root` itself - e.g. the consumer's own directory, writable, layered inside a read-only `root` (see DECISIONS.md's broad-mount/network rule). */
+export interface ExtraMount {
+  source: string;
+  target: string;
+  readOnly?: boolean;
+}
+
 export interface DockerExecOptions {
   /** "bridge" (default) for steps that need the registry, "none" to block network entirely. */
   network: "bridge" | "none";
@@ -161,14 +185,23 @@ export interface DockerExecOptions {
   abortController?: AbortController;
   /** Runs the container as this uid/gid instead of root - see chownDependencyVolume. */
   user?: ContainerUser;
+  /** Mounts `root` read-only instead of read-write. Pair with an `extraMounts` entry that re-mounts the actually-writable subdirectory read-write on top (a more specific bind mount always wins over its parent, regardless of the parent's own read-only flag). */
+  readOnlyRoot?: boolean;
+  /** Extra bind mounts beyond `root`/`volumes`, each independent of `root`'s own read-only flag. */
+  extraMounts?: ExtraMount[];
+  /** Overrides the default `-w /workspace` working directory. */
+  cwd?: string;
 }
 
 /**
- * Wraps any shell command to run inside `image`, with `root` mounted read-write at /workspace
- * (SPEC §4: "Docker-vs-local decision stays in one place in core"). Each call gets its own
- * container name so a pending abort can `docker kill` exactly that container - the underlying
- * host exec has no signal support of its own, so this is the only hook available without
- * threading a signal through the whole Exec type (deferred, see DECISIONS.md).
+ * Wraps any shell command to run inside `image`, with `root` mounted at /workspace (SPEC §4:
+ * "Docker-vs-local decision stays in one place in core") - read-write by default, read-only with
+ * `readOnlyRoot` (see DECISIONS.md: checks/install mount the whole repo read-only so a sibling
+ * schema file resolves, with only the consumer's own directory, via `extraMounts`, writable).
+ * Each call gets its own container name so a pending abort can `docker kill` exactly that
+ * container - the underlying host exec has no signal support of its own, so this is the only
+ * hook available without threading a signal through the whole Exec type (deferred, see
+ * DECISIONS.md).
  */
 export function createDockerExec(
   hostExec: Exec,
@@ -179,6 +212,13 @@ export function createDockerExec(
   const volumeArgs = Object.entries(options.volumes ?? {})
     .map(([volume, target]) => `-v ${quote(`${volume}:${target}`)}`)
     .join(" ");
+  const extraMountArgs = (options.extraMounts ?? [])
+    .map(
+      (mount) =>
+        `-v ${quote(`${mount.source}:${mount.target}${mount.readOnly ? ":ro" : ""}`)}`,
+    )
+    .join(" ");
+  const cwd = options.cwd ?? "/workspace";
 
   return async (command: string): Promise<ExecResult> => {
     const name = `schemend-${randomUUID()}`;
@@ -189,9 +229,10 @@ export function createDockerExec(
       options.user
         ? `--user ${options.user.uid}:${options.user.gid} -e HOME=/tmp`
         : "",
-      `-v ${quote(`${root}:/workspace`)}`,
+      `-v ${quote(`${root}:/workspace${options.readOnlyRoot ? ":ro" : ""}`)}`,
+      extraMountArgs,
       volumeArgs,
-      "-w /workspace",
+      `-w ${cwd}`,
       image,
       `sh -c ${quote(command)}`,
     ]
@@ -246,11 +287,16 @@ export interface ContainerDepsOptions {
   installCommand: string;
   abortController?: AbortController;
   user?: ContainerUser;
+  readOnlyRoot?: boolean;
+  extraMounts?: ExtraMount[];
+  cwd?: string;
 }
 
 /**
  * Installs `root`'s dependencies inside `image`, into the given named volume, with network access
  * (SPEC §6: only install needs the network; the build/test exec this feeds is `--network none`).
+ * `readOnlyRoot`/`extraMounts`/`cwd` mirror DockerExecOptions - see ensureDockerCtx (check.ts),
+ * which mounts the whole repo here too, for the same reason as the final build/test exec.
  */
 export async function ensureContainerDeps(
   options: ContainerDepsOptions,
@@ -262,6 +308,13 @@ export async function ensureContainerDeps(
       ? { abortController: options.abortController }
       : {}),
     ...(options.user !== undefined ? { user: options.user } : {}),
+    ...(options.readOnlyRoot !== undefined
+      ? { readOnlyRoot: options.readOnlyRoot }
+      : {}),
+    ...(options.extraMounts !== undefined
+      ? { extraMounts: options.extraMounts }
+      : {}),
+    ...(options.cwd !== undefined ? { cwd: options.cwd } : {}),
   });
   const result = await install(options.installCommand);
   if (result.exitCode !== 0) {

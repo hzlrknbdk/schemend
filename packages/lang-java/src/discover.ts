@@ -1,4 +1,4 @@
-import { access, readdir, readFile } from "node:fs/promises";
+import { access, readdir, readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import type { AdapterContext, ApiEntry } from "@schemend/core";
 import { UnsupportedWorkspaceError } from "@schemend/core";
@@ -166,6 +166,64 @@ export async function assertNotMultiModule(root: string): Promise<void> {
       "this is a Maven multi-module reactor, which schemend v1 doesn't support (SPEC §4; see " +
       "PLAN.md v1.1). Only a standalone Maven module (no local reactor parent) is supported.",
   );
+}
+
+// A single slash, not `://`: config.inputSpec has already been through findOpenApiGeneratorConfig's
+// own path.normalize(), which collapses "https://host" down to "https:/host".
+const URL_SCHEME_RE = /^[a-z][a-z0-9+.-]*:\//i;
+
+/**
+ * Validates that the pom.xml's configured schema (inputSpec) is a real local file safely inside
+ * `repoRoot` - the boundary ensureDockerCtx (check.ts) actually mounts for install, which (unlike
+ * build/test) runs with network access (see DECISIONS.md). A pom.xml is repo content, not
+ * something to trust blindly when deciding what a networked container can reach: an inputSpec
+ * that's a URL, missing, or resolves (after following symlinks, via realpath) outside `repoRoot`
+ * is refused with a clear error instead of being silently mounted or silently skipped.
+ */
+export async function assertDockerVisibility(
+  root: string,
+  repoRoot: string,
+): Promise<void> {
+  const project = await readPom(path.join(root, "pom.xml"));
+  const config = project && findOpenApiGeneratorConfig(project);
+  if (!config) return;
+
+  if (URL_SCHEME_RE.test(config.inputSpec)) {
+    throw new Error(
+      `${root}/pom.xml's openapi-generator inputSpec ("${config.inputSpec}") is a URL, not a ` +
+        "local file - schemend can't validate or mount a remote schema for Docker-based install.",
+    );
+  }
+
+  const declaredPath = path.resolve(root, config.inputSpec);
+  let resolvedPath: string;
+  try {
+    resolvedPath = await realpath(declaredPath);
+  } catch (error) {
+    throw new Error(
+      `${root}/pom.xml's openapi-generator inputSpec resolves to "${declaredPath}", which ` +
+        `doesn't exist: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+
+  // Both sides go through realpath before comparing: repoRoot itself may sit behind a symlink
+  // (e.g. a tmpdir), and comparing an un-resolved repoRoot against a resolved resolvedPath could
+  // spuriously flag a legitimate in-repo file as "outside" (or the reverse).
+  const realRepoRoot = await realpath(repoRoot);
+  const relFromRepoRoot = path.relative(realRepoRoot, resolvedPath);
+  if (relFromRepoRoot.startsWith("..") || path.isAbsolute(relFromRepoRoot)) {
+    throw new Error(
+      `${root}/pom.xml's openapi-generator inputSpec resolves to "${resolvedPath}", outside the ` +
+        `repo root ("${repoRoot}") Docker mounts for install - refusing to proceed.`,
+    );
+  }
+
+  const stats = await stat(resolvedPath);
+  if (!stats.isFile()) {
+    throw new Error(
+      `${root}/pom.xml's openapi-generator inputSpec resolves to "${resolvedPath}", which isn't a regular file.`,
+    );
+  }
 }
 
 export async function detect(root: string): Promise<boolean> {

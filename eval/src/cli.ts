@@ -52,9 +52,14 @@ interface ReadyConsumer {
 /**
  * Picks each consumer's LanguageAdapter and Docker context (see docker.ts); never falls back to
  * a plain host exec - if Docker itself is unreachable, this throws and the scenario is reported
- * as "error" by main()'s own try/catch, same as any other scenario-level failure.
+ * as "error" by main()'s own try/catch, same as any other scenario-level failure. `repoRoot` is
+ * the scenario's worktree root (mounted read-only alongside `dir`, read-write, so a sibling
+ * schema reference resolves - see ensureDockerCtx, check.ts).
  */
-export type CreateConsumerExec = (dir: string) => Promise<ConsumerDockerExec>;
+export type CreateConsumerExec = (
+  dir: string,
+  repoRoot: string,
+) => Promise<ConsumerDockerExec>;
 
 // worktree @ref -> per consumer baseline (setup + checks against the schema still on disk at
 // ref; a failing baseline means the fixture itself is broken, not the solver, so that consumer
@@ -74,14 +79,14 @@ export async function runScenarioInWorktree(
 
     for (const [key, expectation] of Object.entries(scenario.consumers)) {
       const dir = path.join(worktree.dir, key);
-      const consumerExec = await createConsumerExec(dir);
+      const consumerExec = await createConsumerExec(dir, worktree.dir);
       volumeCleanups.push(consumerExec.cleanup);
 
-      await runSetup(expectation, consumerExec.setupExec);
+      await runSetup(expectation, consumerExec.exec);
 
       const baseline: CheckResult[] | undefined =
         expectation.checks && expectation.checks.length > 0
-          ? await runChecks(consumerExec.checkExec, expectation.checks)
+          ? await runChecks(consumerExec.exec, expectation.checks)
           : undefined;
       const baselineFailed = baseline?.some(
         (check) => check.status === "failed",
@@ -115,9 +120,9 @@ export async function runScenarioInWorktree(
       const consumerDirs: Record<string, string> = {};
       const consumerExecs: Record<string, Exec> = {};
       for (const { key, dir, expectation, consumerExec } of ready) {
-        await runSetup(expectation, consumerExec.setupExec);
+        await runSetup(expectation, consumerExec.exec);
         consumerDirs[key] = dir;
-        consumerExecs[key] = consumerExec.checkExec;
+        consumerExecs[key] = consumerExec.exec;
       }
 
       const readyScenario: Scenario = {

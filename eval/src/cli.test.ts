@@ -30,7 +30,7 @@ async function fakeCreateConsumerExec(
   dir: string,
 ): Promise<ConsumerDockerExec> {
   const exec = (command: string) => runCommand(command, dir);
-  return { setupExec: exec, checkExec: exec, cleanup: async () => {} };
+  return { exec, cleanup: async () => {} };
 }
 
 describe("runScenarioInWorktree", () => {
