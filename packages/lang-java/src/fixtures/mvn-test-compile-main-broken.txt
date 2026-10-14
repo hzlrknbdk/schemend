@@ -1,9 +1,9 @@
-[ERROR] COMPILATION ERROR : 
-[ERROR] /workspace/src/main/java/com/example/ShippingRule.java:[5,17] cannot find symbol
+[ERROR] COMPILATION ERROR :
+[ERROR] /workspace/services/invoice/src/main/java/com/example/ShippingRule.java:[5,17] cannot find symbol
   symbol:   method getTotalPrice()
   location: variable order of type com.example.Order
 [ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.13.0:compile (default-compile) on project probe: Compilation failure
-[ERROR] /workspace/src/main/java/com/example/ShippingRule.java:[5,17] cannot find symbol
+[ERROR] /workspace/services/invoice/src/main/java/com/example/ShippingRule.java:[5,17] cannot find symbol
 [ERROR]   symbol:   method getTotalPrice()
 [ERROR]   location: variable order of type com.example.Order
 [ERROR] -> [Help 1]

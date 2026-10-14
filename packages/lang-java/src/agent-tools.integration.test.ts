@@ -28,11 +28,13 @@ function realExec(command: string): Promise<ExecResult> {
   });
 }
 
-// `findAffected`/`build` run on the plain host ctx in production (SPEC §2/§6: only build/test
-// run in Docker there, through a separate dockerCtx - see check.ts). Mounting at the SAME
-// absolute path on both sides (instead of a generic /workspace) makes javac's reported paths
-// match ctx.root exactly, the same as a real local `mvn` would - Docker here is only standing in
-// for a local Maven this machine doesn't have, not changing which paths the adapter should see.
+// In production, findAffected/build run through ensureDockerCtx's broad mount (the whole repo at
+// /workspace, the consumer at a subpath - see check.ts), which javac paths need
+// resolveContainerPath to map back to a host path (ctx.repoRoot). This test skips that generic
+// machinery and mounts at the SAME absolute path on both sides instead, so javac's reported paths
+// already equal ctx.root exactly with no translation needed (no ctx.repoRoot is set here, so
+// resolveContainerPath is a no-op anyway) - simpler for testing buildAgentTools' dynamic allowlist
+// behavior in isolation, since Docker here only stands in for a local Maven this machine lacks.
 function dockerExec(command: string): Promise<ExecResult> {
   return realExec(
     `docker run --rm -v ${root}:${root} -v ${process.env.HOME}/.m2:/root/.m2 ` +

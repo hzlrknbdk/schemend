@@ -6,6 +6,7 @@ import type {
   ApiChange,
   ApiEntry,
 } from "@schemend/core";
+import { resolveContainerPath } from "@schemend/core";
 
 interface JavacDiagnostic {
   file: string;
@@ -107,11 +108,15 @@ export async function findAffected(
     const match = matchChange(diagnostic.message, changes);
     if (!match) continue;
 
-    const sourceText = await readFile(diagnostic.file, "utf-8").catch(() => "");
+    // mvn's own paths are absolute inside the container - ensureDockerCtx mounts the whole repo
+    // at /workspace, so this is repoRoot-relative, not ctx.root-relative (see
+    // resolveContainerPath, docker-exec.ts).
+    const hostFile = resolveContainerPath(diagnostic.file, ctx.repoRoot);
+    const sourceText = await readFile(hostFile, "utf-8").catch(() => "");
     const snippet = sourceText.split("\n")[diagnostic.line - 1]?.trim() ?? "";
 
     locations.push({
-      file: path.relative(ctx.root, diagnostic.file),
+      file: path.relative(ctx.root, hostFile),
       line: diagnostic.line,
       changeId: match.id,
       snippet,

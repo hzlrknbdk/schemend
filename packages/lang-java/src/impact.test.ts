@@ -7,6 +7,7 @@ import { findAffected } from "./impact.js";
 
 const FIXTURES_DIR = path.join(import.meta.dirname, "fixtures");
 
+let repoRoot: string;
 let root: string;
 
 async function write(relPath: string, content: string): Promise<void> {
@@ -15,12 +16,13 @@ async function write(relPath: string, content: string): Promise<void> {
   await writeFile(full, content);
 }
 
-// Both fixtures were captured from a real `mvn -q -B test-compile` run against a project rooted
-// at /workspace (see the capture commands in PROGRESS.md); substituting the real tmpdir root in
-// for that prefix keeps the text's error format fully authentic while making it usable here.
+// Both fixtures were captured from a real `mvn -q -B test-compile` run, with the container's
+// /workspace (ensureDockerCtx mounts the whole repo there, the consumer at /workspace/services/
+// invoice - see docker-exec.ts) kept literally in the fixture text; findAffected's own
+// resolveContainerPath call is what maps that back to repoRoot, so the fixture needs no
+// substitution here.
 async function readFixture(name: string): Promise<string> {
-  const raw = await readFile(path.join(FIXTURES_DIR, name), "utf-8");
-  return raw.replaceAll("/workspace", root);
+  return readFile(path.join(FIXTURES_DIR, name), "utf-8");
 }
 
 const api: ApiEntry = {
@@ -40,11 +42,13 @@ const totalPriceRemoved: ApiChange = {
 };
 
 beforeEach(async () => {
-  root = await mkdtemp(path.join(tmpdir(), "schemend-lang-java-impact-"));
+  repoRoot = await mkdtemp(path.join(tmpdir(), "schemend-lang-java-impact-"));
+  root = path.join(repoRoot, "services/invoice");
+  await mkdir(root, { recursive: true });
 });
 
 afterEach(async () => {
-  await rm(root, { recursive: true, force: true });
+  await rm(repoRoot, { recursive: true, force: true });
 });
 
 describe("findAffected", () => {
@@ -65,7 +69,7 @@ describe("findAffected", () => {
     );
     const exec = async () => ({ exitCode: 1, stdout: output, stderr: "" });
 
-    const locations = await findAffected({ root, exec }, api, [
+    const locations = await findAffected({ root, repoRoot, exec }, api, [
       totalPriceRemoved,
     ]);
 
@@ -99,7 +103,7 @@ describe("findAffected", () => {
     );
     const exec = async () => ({ exitCode: 1, stdout: output, stderr: "" });
 
-    const locations = await findAffected({ root, exec }, api, [
+    const locations = await findAffected({ root, repoRoot, exec }, api, [
       totalPriceRemoved,
     ]);
 
@@ -122,7 +126,7 @@ describe("findAffected", () => {
     };
     const exec = async () => ({ exitCode: 1, stdout: output, stderr: "" });
 
-    const locations = await findAffected({ root, exec }, api, [
+    const locations = await findAffected({ root, repoRoot, exec }, api, [
       unrelatedChange,
     ]);
 
@@ -137,7 +141,7 @@ describe("findAffected", () => {
       stderr: "",
     });
 
-    const locations = await findAffected({ root, exec }, api, [
+    const locations = await findAffected({ root, repoRoot, exec }, api, [
       totalPriceRemoved,
     ]);
 
@@ -147,7 +151,7 @@ describe("findAffected", () => {
   it("returns an empty list when the build passes", async () => {
     const exec = async () => ({ exitCode: 0, stdout: "", stderr: "" });
 
-    const locations = await findAffected({ root, exec }, api, [
+    const locations = await findAffected({ root, repoRoot, exec }, api, [
       totalPriceRemoved,
     ]);
 
