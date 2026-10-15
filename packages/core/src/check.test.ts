@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -22,6 +22,11 @@ let root: string;
 beforeEach(async () => {
   root = await mkdtemp(path.join(tmpdir(), "schemend-check-"));
   await writeFile(path.join(root, "pnpm-lock.yaml"), "lockfileVersion: '9.0'");
+  // runCheck's baseline step now swaps each api's real schema file content out and back in
+  // (reads it before, restores it after) - a real file needs to exist at each config.apis
+  // schema path for that, even though diffSchemas itself is mocked below.
+  await writeFile(path.join(root, "schema.json"), "new schema");
+  await writeFile(path.join(root, "other.json"), "new schema");
   mockedDiff.mockReset();
   mockedFixAgent.mockReset();
 });
@@ -128,6 +133,60 @@ describe("runCheck", () => {
     expect(regenerateClient).not.toHaveBeenCalled();
     expect(findAffected).not.toHaveBeenCalled();
     expect(mockedFixAgent).not.toHaveBeenCalled();
+  });
+
+  it("swaps the schema file to its pre-change content for baseline, then restores it", async () => {
+    mockedDiff.mockResolvedValue([change]);
+    const schemaPath = path.join(root, "schema.json");
+    const seenDuringBuild: string[] = [];
+    const seenDuringTest: string[] = [];
+    const adapter = makeAdapter({
+      build: async () => {
+        seenDuringBuild.push(await readFile(schemaPath, "utf-8"));
+        return { name: "build", status: "passed" };
+      },
+      test: async () => {
+        seenDuringTest.push(await readFile(schemaPath, "utf-8"));
+        return { name: "test", status: "passed" };
+      },
+      findAffected: async () => [],
+    });
+
+    await runCheck({
+      config: baseConfig(),
+      root,
+      exec: fakeExec([[]]),
+      adapters: [adapter],
+    });
+
+    // fakeExec's "git show" branch (writeFileAtRef) returns "old schema"; beforeEach wrote
+    // "new schema" as the file's real, current content. build/test run again for the verify
+    // step (findAffected returns []), by which point the schema is back to "new schema".
+    expect(seenDuringBuild[0]).toBe("old schema");
+    expect(seenDuringTest[0]).toBe("old schema");
+    expect(seenDuringBuild.at(-1)).toBe("new schema");
+    await expect(readFile(schemaPath, "utf-8")).resolves.toBe("new schema");
+  });
+
+  it("restores the schema file even when baseline build throws", async () => {
+    mockedDiff.mockResolvedValue([change]);
+    const schemaPath = path.join(root, "schema.json");
+    const adapter = makeAdapter({
+      build: async () => {
+        throw new Error("boom");
+      },
+    });
+
+    await expect(
+      runCheck({
+        config: baseConfig(),
+        root,
+        exec: fakeExec([]),
+        adapters: [adapter],
+      }),
+    ).rejects.toThrow("boom");
+
+    await expect(readFile(schemaPath, "utf-8")).resolves.toBe("new schema");
   });
 
   it("regenerates and commits even when nothing needed fixing", async () => {

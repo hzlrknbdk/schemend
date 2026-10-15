@@ -1,4 +1,4 @@
-import { rm } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { runFixAgent } from "./agent.js";
 import { Budget, BudgetExceededError } from "./budget.js";
@@ -280,6 +280,7 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
     }
 
     const newSchemaFile = path.resolve(root, apiConfig.schema);
+    const oldSchemaContent = await readFile(oldSchemaFile, "utf-8");
     let changes: ApiChange[];
     try {
       try {
@@ -338,10 +339,25 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
       ));
     }
     const dockerCtx: AdapterContext = dockerCtxCache;
-    const baselineBuild = await adapter.build(dockerCtx);
-    emit({ type: "check-result", api, check: baselineBuild });
-    const baselineTest = await adapter.test(dockerCtx);
-    emit({ type: "check-result", api, check: baselineTest });
+    // Java's generate-sources and C#'s NSwag target both regenerate the client fresh from
+    // whatever's on `newSchemaFile` on every single build/test invocation (unlike TypeScript,
+    // which only reads its committed, stale generated client until regenerateClient is called
+    // below) - without this swap, baseline would see the new, breaking schema immediately in a
+    // real CI trigger (the commit that changed it is already on disk by the time schemend runs),
+    // defeating SPEC §2 step 3's "before changing anything". The restore is unconditional so a
+    // thrown/cancelled build never leaves the real schema file swapped out.
+    const currentSchemaContent = await readFile(newSchemaFile, "utf-8");
+    await writeFile(newSchemaFile, oldSchemaContent);
+    let baselineBuild: CheckResult;
+    let baselineTest: CheckResult;
+    try {
+      baselineBuild = await adapter.build(dockerCtx);
+      emit({ type: "check-result", api, check: baselineBuild });
+      baselineTest = await adapter.test(dockerCtx);
+      emit({ type: "check-result", api, check: baselineTest });
+    } finally {
+      await writeFile(newSchemaFile, currentSchemaContent);
+    }
     if (baselineBuild.status !== "passed" || baselineTest.status !== "passed") {
       emit({
         type: "step-finished",
