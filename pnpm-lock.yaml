@@ -181,6 +181,9 @@ importers:
       '@schemend/core':
         specifier: workspace:*
         version: link:../packages/core
+      '@schemend/lang-csharp':
+        specifier: workspace:*
+        version: link:../packages/lang-csharp
       '@schemend/lang-java':
         specifier: workspace:*
         version: link:../packages/lang-java

@@ -2,6 +2,7 @@ import { copyFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ContainerUser, Exec } from "@schemend/core";
+import { csharpAdapter } from "@schemend/lang-csharp";
 import { javaAdapter } from "@schemend/lang-java";
 import { typescriptAdapter } from "@schemend/lang-typescript";
 import { type CheckResult, runChecks } from "./checks.js";
@@ -255,7 +256,7 @@ async function main(): Promise<void> {
   }
 
   const createConsumerExec = createConsumerExecFactory(
-    [typescriptAdapter, javaAdapter],
+    [typescriptAdapter, javaAdapter, csharpAdapter],
     hostExec,
     containerUser(),
   );

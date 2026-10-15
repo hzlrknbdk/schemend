@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@schemend/core": "workspace:*",
+    "@schemend/lang-csharp": "workspace:*",
     "@schemend/lang-java": "workspace:*",
     "@schemend/lang-typescript": "workspace:*",
     "zod": "^4.6.5"
