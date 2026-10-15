@@ -327,30 +327,35 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
     // SPEC §2 step 3: baseline BEFORE anything (including regeneration) changes.
     const baselineStartedAt = Date.now();
     emit({ type: "step-started", api, step: "baseline" });
-    if (!dockerCtxCache) {
-      const repoRoot = await findRepoRoot(exec);
-      ({ ctx: dockerCtxCache } = await ensureDockerCtx(
-        adapter,
-        root,
-        repoRoot,
-        exec,
-        options.abortController,
-        options.containerUser,
-      ));
-    }
-    const dockerCtx: AdapterContext = dockerCtxCache;
-    // Java's generate-sources and C#'s NSwag target both regenerate the client fresh from
-    // whatever's on `newSchemaFile` on every single build/test invocation (unlike TypeScript,
-    // which only reads its committed, stale generated client until regenerateClient is called
-    // below) - without this swap, baseline would see the new, breaking schema immediately in a
-    // real CI trigger (the commit that changed it is already on disk by the time schemend runs),
-    // defeating SPEC §2 step 3's "before changing anything". The restore is unconditional so a
-    // thrown/cancelled build never leaves the real schema file swapped out.
+    // Swapped to the old schema before ensureDockerCtx, not just around the build/test calls
+    // below - Java's installCommand (a real `mvn test` warm-up, see DECISIONS.md) regenerates
+    // the client and compiles against whatever's on `newSchemaFile` too, on a fresh dependency
+    // volume's first run. With the new (breaking) schema still in place at that point, the
+    // warm-up's own compile fails before Maven ever reaches the test phase, so surefire's own
+    // plugin dependencies never get resolved into the volume; the real baseline build then
+    // compiles fine against the swapped-back old schema, but its --network none test call fails
+    // to resolve those never-cached dependencies - a dependency-resolution error that looks
+    // nothing like the schema change, discovered via a real paid milestone run against
+    // services/invoice. The restore stays unconditional so a thrown/cancelled run never leaves
+    // the real schema file swapped out.
     const currentSchemaContent = await readFile(newSchemaFile, "utf-8");
     await writeFile(newSchemaFile, oldSchemaContent);
     let baselineBuild: CheckResult;
     let baselineTest: CheckResult;
+    let dockerCtx: AdapterContext;
     try {
+      if (!dockerCtxCache) {
+        const repoRoot = await findRepoRoot(exec);
+        ({ ctx: dockerCtxCache } = await ensureDockerCtx(
+          adapter,
+          root,
+          repoRoot,
+          exec,
+          options.abortController,
+          options.containerUser,
+        ));
+      }
+      dockerCtx = dockerCtxCache;
       baselineBuild = await adapter.build(dockerCtx);
       emit({ type: "check-result", api, check: baselineBuild });
       baselineTest = await adapter.test(dockerCtx);
