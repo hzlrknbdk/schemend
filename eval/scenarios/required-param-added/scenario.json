@@ -3,7 +3,7 @@
   "description": "orders: GET /orders/{order_id} gains a required query parameter (warehouseId)",
   "real": false,
   "source": "schemend-demo",
-  "ref": "5b59825",
+  "ref": "26b3d87",
   "providerSchema": "services/orders/openapi.json",
   "schemaBefore": "schema.before.json",
   "schemaAfter": "schema.after.json",
@@ -23,6 +23,16 @@
       "flagContains": "warehouseId",
       "setup": ["mvn -q -B generate-sources"],
       "checks": ["mvn -q -B test-compile"]
+    },
+    "services/notification": {
+      "expected": "flagged",
+      "flagContains": "warehouseId",
+      "setup": [
+        "dotnet build src/Notification/Notification.csproj --no-restore -t:GenerateOrdersClient"
+      ],
+      "checks": [
+        "dotnet build tests/Notification.Tests/Notification.Tests.csproj --no-restore"
+      ]
     }
   }
 }
