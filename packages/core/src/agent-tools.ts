@@ -65,10 +65,30 @@ function computeDiff(
   return { added, removed, diff: createPatch(file, before, after) };
 }
 
-function formatCheck(result: CheckResult): string {
-  return result.status === "passed"
-    ? `${result.name}: passed`
-    : `${result.name}: failed\n${result.detail ?? ""}`;
+/**
+ * `summary` and `newlyAllowedFiles` are both encoded as a trailing, schemend-authored
+ * `[[schemend:...]]` line - never a language-specific pattern, since core's own
+ * agent.ts re-parses this exact tag (not the compiler's own error format) to populate the
+ * agent-tool-result event. `newlyAllowedFiles` is also spelled out in plain language right above
+ * it, since that part is for the model, not just the event system: without it, the model has no
+ * way to know `allowed` just grew beyond the files it was originally told about.
+ */
+function formatCheck(
+  result: CheckResult,
+  summary: Record<string, unknown>,
+  newlyAllowedFiles: readonly string[] = [],
+): string {
+  if (result.status === "passed") return `${result.name}: passed`;
+  const lines = [`${result.name}: failed`, result.detail ?? ""];
+  if (newlyAllowedFiles.length > 0) {
+    lines.push(
+      "",
+      `You may now also edit: ${newlyAllowedFiles.join(", ")} - newly discovered by ` +
+        "this build, previously invisible until the main code compiled.",
+    );
+  }
+  lines.push("", `[[schemend:summary]]${JSON.stringify(summary)}`);
+  return lines.join("\n");
 }
 
 export interface AgentTools {
@@ -101,7 +121,14 @@ export interface AgentTools {
  */
 export function buildAgentTools(
   ctx: AdapterContext,
-  adapter: Pick<LanguageAdapter, "build" | "test" | "findAffected">,
+  adapter: Pick<
+    LanguageAdapter,
+    | "build"
+    | "test"
+    | "findAffected"
+    | "summarizeBuildFailure"
+    | "summarizeTestResult"
+  >,
   affectedFiles: readonly string[],
   api: ApiEntry,
   changes: ApiChange[],
@@ -179,6 +206,7 @@ export function buildAgentTools(
     {},
     async () => {
       const result = await adapter.build(ctx);
+      const newlyAllowedFiles: string[] = [];
       if (result.status === "failed") {
         const newlyAffected = await adapter.findAffected(ctx, api, changes);
         for (const location of newlyAffected) {
@@ -187,11 +215,21 @@ export function buildAgentTools(
             isWithinRoot(ctx.root, location.file)
           ) {
             allowed.add(location.file);
+            newlyAllowedFiles.push(location.file);
           }
         }
       }
+      const summary =
+        result.status === "failed"
+          ? (adapter.summarizeBuildFailure?.(result) ?? {})
+          : {};
       return {
-        content: [{ type: "text" as const, text: formatCheck(result) }],
+        content: [
+          {
+            type: "text" as const,
+            text: formatCheck(result, summary, newlyAllowedFiles),
+          },
+        ],
       };
     },
   );
@@ -202,8 +240,14 @@ export function buildAgentTools(
     {},
     async () => {
       const result = await adapter.test(ctx);
+      const summary =
+        result.status === "failed"
+          ? (adapter.summarizeTestResult?.(result) ?? {})
+          : {};
       return {
-        content: [{ type: "text" as const, text: formatCheck(result) }],
+        content: [
+          { type: "text" as const, text: formatCheck(result, summary) },
+        ],
       };
     },
   );

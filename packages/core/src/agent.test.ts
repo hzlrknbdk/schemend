@@ -170,6 +170,33 @@ describe("runFixAgent", () => {
     expect(result.confidence).toBe("verified-by-tests");
   });
 
+  it("tells the model the allowed-files list can grow, in both prompts", async () => {
+    mockedQuery.mockImplementation(() =>
+      fakeQuery([resultMessage({ total_cost_usd: 0.01 })]),
+    );
+
+    await runFixAgent({
+      ctx: ctx(),
+      adapter: passingAdapter,
+      apiEntry,
+      affected,
+      changes: [change],
+      budget: new Budget(1),
+      model: "claude-sonnet-5",
+      api: "orders",
+    });
+
+    const options = mockedQuery.mock.calls[0]?.[0]?.options;
+    // Regression guard for a real bug: an earlier wording ("fix ONLY the files listed above -
+    // do not touch any other file") was taken literally by a real model even once run_build's
+    // on-failure expansion (agent-tools.ts) had genuinely unlocked a new file - the model never
+    // tried, because nothing told it the list could grow. Both prompts must say so now.
+    expect(options?.systemPrompt).toMatch(/can grow/);
+    expect(mockedQuery.mock.calls[0]?.[0]?.prompt).toMatch(
+      /list of editable files can grow/,
+    );
+  });
+
   it("flags budget-exceeded in review without throwing", async () => {
     mockedQuery.mockImplementation(() =>
       fakeQuery([
@@ -311,14 +338,19 @@ describe("runFixAgent events", () => {
     });
   });
 
-  it("extracts an error count and first error from a failing run_build tool result", async () => {
+  it("extracts checkStatus + error count + first error from a failing run_build tool result", async () => {
+    // is_error stays false: run_build's own tool call succeeded (it always returns a normal
+    // result, even for a failed build - see agent-tools.ts). The build-failed/errorCount/
+    // firstError signal rides in the text itself, via formatCheck's `[[schemend:summary]]`
+    // trailer (the adapter's own parsing already happened before this text was built).
     mockedQuery.mockImplementation(() =>
       fakeQuery([
         assistantToolUse("tu_2", "mcp__schemend__run_build", {}),
         userToolResult(
           "tu_2",
-          "typecheck: failed\nsrc/a.ts(3,5): error TS2345: bad\nsrc/b.ts(1,1): error TS2345: also bad",
-          true,
+          "typecheck: failed\nsrc/a.ts(3,5): error TS2345: bad\nsrc/b.ts(1,1): error TS2345: also bad\n\n" +
+            '[[schemend:summary]]{"errorCount":2,"firstError":"error TS2345: bad"}',
+          false,
         ),
         resultMessage(),
       ]),
@@ -341,7 +373,8 @@ describe("runFixAgent events", () => {
       events.find((event) => event.type === "agent-tool-result"),
     ).toMatchObject({
       tool: "run_build",
-      status: "error",
+      status: "success",
+      checkStatus: "failed",
       errorCount: 2,
       firstError: expect.stringContaining("TS2345"),
     });

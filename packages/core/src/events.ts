@@ -6,7 +6,7 @@ import type {
   ServiceResult,
 } from "./types.js";
 
-export const EVENT_SCHEMA_VERSION = 1;
+export const EVENT_SCHEMA_VERSION = 2;
 
 export type CheckStepName =
   | "detect"
@@ -46,12 +46,18 @@ type AgentToolResultDetail =
   | {
       tool: "run_build";
       status: "success" | "error";
+      /** Whether the underlying build actually passed - distinct from `status`, which is only
+       * whether the tool call itself crashed (run_build never throws on a failed build, so
+       * `status` alone would always read "success"). Absent only if the result text didn't look
+       * like schemend's own formatCheck wrapper at all (shouldn't happen in practice). */
+      checkStatus?: "passed" | "failed";
       errorCount?: number;
       firstError?: string;
     }
   | {
       tool: "run_tests";
       status: "success" | "error";
+      checkStatus?: "passed" | "failed";
       passed?: number;
       failed?: number;
       firstFailure?: string;

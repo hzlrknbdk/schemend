@@ -344,4 +344,121 @@ describe("run_build / run_tests", () => {
     expect(text).toContain("test: failed");
     expect(text).toContain("1 failing");
   });
+
+  it("tells the model which newly-affected files it may now also edit", async () => {
+    const adapter = {
+      build: async (): Promise<CheckResult> => ({
+        name: "typecheck",
+        status: "failed" as const,
+      }),
+      test: stubAdapter.test,
+      findAffected: async (): Promise<AffectedLocation[]> => [
+        {
+          file: "src/newly-affected.ts",
+          line: 1,
+          changeId: change.id,
+          snippet: "order.totalPrice",
+        },
+      ],
+    };
+    const { tools } = buildAgentTools(
+      { root, exec: async () => ({ exitCode: 0, stdout: "", stderr: "" }) },
+      adapter,
+      [],
+      apiEntry,
+      [change],
+    );
+
+    const result = await findTool(tools, "run_build").handler({}, undefined);
+    const block = result.content[0];
+    const text = block?.type === "text" ? block.text : undefined;
+
+    expect(text).toContain("You may now also edit: src/newly-affected.ts");
+  });
+
+  it("says nothing about newly-allowed files when findAffected reports nothing new", async () => {
+    const { tools } = buildAgentTools(
+      { root, exec: async () => ({ exitCode: 0, stdout: "", stderr: "" }) },
+      {
+        build: async (): Promise<CheckResult> => ({
+          name: "typecheck",
+          status: "failed" as const,
+        }),
+        test: stubAdapter.test,
+        findAffected: stubAdapter.findAffected,
+      },
+      [],
+      apiEntry,
+      [change],
+    );
+
+    const result = await findTool(tools, "run_build").handler({}, undefined);
+    const block = result.content[0];
+    const text = block?.type === "text" ? block.text : undefined;
+
+    expect(text).not.toContain("You may now also edit");
+  });
+
+  it("embeds the adapter's build-failure summary as a machine-readable trailer", async () => {
+    const adapter = {
+      build: async (): Promise<CheckResult> => ({
+        name: "typecheck",
+        status: "failed" as const,
+        detail: "src/a.ts(1,1): error TS2339: bad",
+      }),
+      test: stubAdapter.test,
+      findAffected: stubAdapter.findAffected,
+      summarizeBuildFailure: () => ({
+        errorCount: 1,
+        firstError: "TS2339: bad",
+      }),
+    };
+    const { tools } = buildAgentTools(
+      { root, exec: async () => ({ exitCode: 0, stdout: "", stderr: "" }) },
+      adapter,
+      [],
+      apiEntry,
+      [change],
+    );
+
+    const result = await findTool(tools, "run_build").handler({}, undefined);
+    const block = result.content[0];
+    const text = block?.type === "text" ? block.text : undefined;
+
+    expect(text).toContain(
+      '[[schemend:summary]]{"errorCount":1,"firstError":"TS2339: bad"}',
+    );
+  });
+
+  it("embeds the adapter's test-result summary as a machine-readable trailer", async () => {
+    const adapter = {
+      build: stubAdapter.build,
+      test: async (): Promise<CheckResult> => ({
+        name: "test",
+        status: "failed" as const,
+        detail: "1 failing",
+      }),
+      findAffected: stubAdapter.findAffected,
+      summarizeTestResult: () => ({
+        passed: 9,
+        failed: 1,
+        firstFailure: "shipping.test.ts > applies free shipping",
+      }),
+    };
+    const { tools } = buildAgentTools(
+      { root, exec: async () => ({ exitCode: 0, stdout: "", stderr: "" }) },
+      adapter,
+      [],
+      apiEntry,
+      [change],
+    );
+
+    const result = await findTool(tools, "run_tests").handler({}, undefined);
+    const block = result.content[0];
+    const text = block?.type === "text" ? block.text : undefined;
+
+    expect(text).toContain(
+      '[[schemend:summary]]{"passed":9,"failed":1,"firstFailure":"shipping.test.ts > applies free shipping"}',
+    );
+  });
 });

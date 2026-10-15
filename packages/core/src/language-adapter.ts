@@ -36,6 +36,24 @@ export interface LanguageAdapter {
   ): Promise<AffectedLocation[]>;
   build(ctx: AdapterContext): Promise<CheckResult>;
   test(ctx: AdapterContext): Promise<CheckResult>;
+  /**
+   * Best-effort error count + first error message out of a failed build's own CheckResult.detail,
+   * for the fix agent's progress log (SPEC §14) only - never a source of truth (findAffected's own
+   * parsing is that). Each toolchain's error format is different (tsc's `error TS1234`, javac's
+   * `[ERROR] file:[line,col]`, MSBuild's `error CS1234`), so this lives per-adapter rather than as
+   * one regex in core guessing at all of them; returns {} when nothing recognizable is found,
+   * never a fabricated count.
+   */
+  summarizeBuildFailure?(result: CheckResult): {
+    errorCount?: number;
+    firstError?: string;
+  };
+  /** Same idea as summarizeBuildFailure, for a failed test run's own CheckResult.detail. */
+  summarizeTestResult?(result: CheckResult): {
+    passed?: number;
+    failed?: number;
+    firstFailure?: string;
+  };
   dockerImage: string;
   dockerfile?: string;
   /**

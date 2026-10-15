@@ -67,46 +67,45 @@ function buildPrompt(
     "Affected locations:",
     locationLines,
     "",
-    "Use read_file to inspect a file before editing it. Use edit_file to fix ONLY the files " +
-      "listed above - do not touch any other file. After editing, call run_build and run_tests " +
-      "to verify your fix; if they fail, keep fixing within the listed files until they pass or " +
-      "you run out of ideas, then stop.",
+    "Use read_file to inspect a file before editing it. Use edit_file to fix the files listed " +
+      "above. After editing, call run_build and run_tests to verify your fix. That list of " +
+      "editable files can grow: if run_build still fails after your fix, it may report that " +
+      "other files are now also affected (e.g. a test fixture only reachable once the main " +
+      "code compiles) - run_build's own result will name them when that happens, and you may " +
+      "then edit those too. Don't edit any file that hasn't been named as affected, originally " +
+      "or newly. Keep fixing within whatever is currently affected until build and tests pass " +
+      "or you run out of ideas, then stop.",
   ].join("\n");
 }
 
 /**
- * Best-effort: tsc's error lines look like "foo.ts(1,2): error TS2345: ...". Returns {} (no
- * fields) for output that doesn't look like that, rather than a fabricated count - today that's
- * only a passing run, but it's also the honest fallback for a future Java/C# adapter's own build
- * tool output, which won't match this TypeScript-shaped pattern at all.
+ * Pulls the `[[schemend:summary]]{...}` trailer `formatCheck` (agent-tools.ts) appends to a
+ * failed run_build/run_tests result. The actual language-specific parsing (tsc's `error TS1234`,
+ * javac's `[ERROR] file:[line,col]`, MSBuild's `error CS1234`, ...) already happened per-adapter
+ * before this text was built - this only ever reads schemend's own wrapper format, never a
+ * compiler's, which is why one regex here covers every language.
  */
-function parseBuildResult(text: string): {
-  errorCount?: number;
-  firstError?: string;
-} {
-  const matches = text.match(/error TS\d+[^\n]*/g);
-  if (!matches || matches.length === 0) return {};
-  return { errorCount: matches.length, firstError: matches[0]?.trim() };
+function parseSummaryTag(text: string): Record<string, unknown> {
+  const match = text.match(/\[\[schemend:summary\]\](.*)$/m);
+  if (!match?.[1]) return {};
+  try {
+    const parsed = JSON.parse(match[1]);
+    return typeof parsed === "object" && parsed !== null ? parsed : {};
+  } catch {
+    return {};
+  }
 }
 
 /**
- * Best-effort: matches vitest's default reporter summary line ("Tests  1 failed | 9 passed (10)")
- * and its first failing-test marker line. Returns whichever parts it recognizes; a reporter with a
- * different format just yields {}, same reasoning as parseBuildResult.
+ * `formatCheck` always starts a result with "<name>: passed" (one line, nothing else) or
+ * "<name>: failed" (followed by detail) - schemend's own fixed wrapper, the same for every
+ * language, so checking the first line's ending is enough; no per-adapter knowledge needed.
  */
-function parseTestResult(text: string): {
-  passed?: number;
-  failed?: number;
-  firstFailure?: string;
-} {
-  const summary = text.match(/Tests\s+(?:(\d+) failed \| )?(\d+) passed/);
-  const failureLine = text.match(/^\s*(?:✗|×|FAIL)\s+.+$/m);
-  return {
-    ...(summary
-      ? { passed: Number(summary[2]), failed: Number(summary[1] ?? 0) }
-      : {}),
-    ...(failureLine ? { firstFailure: failureLine[0].trim() } : {}),
-  };
+function parseCheckStatus(text: string): "passed" | "failed" | undefined {
+  const firstLine = text.split("\n", 1)[0] ?? "";
+  if (firstLine.endsWith(": passed")) return "passed";
+  if (firstLine.endsWith(": failed")) return "failed";
+  return undefined;
 }
 
 /** The tool's `input` is typed `unknown` by the SDK (zod shape isn't known at this generic point). */
@@ -236,8 +235,9 @@ export async function runFixAgent(
         : {}),
       systemPrompt:
         "You are schemend's fix agent. You only have four tools: read_file, edit_file, " +
-        "run_build, run_tests. You have no shell access and cannot read or edit any file " +
-        "outside the ones you are told are affected.",
+        "run_build, run_tests. You have no shell access and can only edit files you have been " +
+        "told are affected - that set can grow mid-session (run_build will tell you when it " +
+        "does), but you may never edit a file that hasn't been named as affected.",
     },
   });
 
@@ -303,26 +303,47 @@ export async function runFixAgent(
                 file: pending.file ?? "",
               });
               break;
-            case "run_build":
+            case "run_build": {
+              const checkStatus = parseCheckStatus(text);
+              const summary = parseSummaryTag(text);
               emit({
                 type: "agent-tool-result",
                 api,
                 toolUseId: block.tool_use_id,
                 tool: "run_build",
                 status,
-                ...parseBuildResult(text),
+                ...(checkStatus !== undefined ? { checkStatus } : {}),
+                ...(typeof summary.errorCount === "number"
+                  ? { errorCount: summary.errorCount }
+                  : {}),
+                ...(typeof summary.firstError === "string"
+                  ? { firstError: summary.firstError }
+                  : {}),
               });
               break;
-            case "run_tests":
+            }
+            case "run_tests": {
+              const checkStatus = parseCheckStatus(text);
+              const summary = parseSummaryTag(text);
               emit({
                 type: "agent-tool-result",
                 api,
                 toolUseId: block.tool_use_id,
                 tool: "run_tests",
                 status,
-                ...parseTestResult(text),
+                ...(checkStatus !== undefined ? { checkStatus } : {}),
+                ...(typeof summary.passed === "number"
+                  ? { passed: summary.passed }
+                  : {}),
+                ...(typeof summary.failed === "number"
+                  ? { failed: summary.failed }
+                  : {}),
+                ...(typeof summary.firstFailure === "string"
+                  ? { firstFailure: summary.firstFailure }
+                  : {}),
               });
               break;
+            }
           }
         }
       } else if (message.type === "result") {
