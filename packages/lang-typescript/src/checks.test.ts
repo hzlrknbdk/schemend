@@ -3,7 +3,12 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Exec, ExecResult } from "@schemend/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { build, test as runTest } from "./checks.js";
+import {
+  build,
+  test as runTest,
+  summarizeBuildFailure,
+  summarizeTestResult,
+} from "./checks.js";
 
 let root: string;
 
@@ -84,5 +89,48 @@ describe("test", () => {
 
     expect(result.status).toBe("failed");
     expect(result.detail).toContain("1 failing");
+  });
+});
+
+describe("summarizeBuildFailure", () => {
+  it("counts tsc's error lines and reports the first one", () => {
+    const result = {
+      name: "typecheck",
+      status: "failed" as const,
+      detail:
+        "src/a.ts(1,1): error TS2339: Property 'x' does not exist.\n" +
+        "src/b.ts(2,2): error TS2345: Argument of type 'x' is not assignable.",
+    };
+
+    expect(summarizeBuildFailure(result)).toEqual({
+      errorCount: 2,
+      firstError: "error TS2339: Property 'x' does not exist.",
+    });
+  });
+
+  it("returns {} when nothing looks like a tsc error", () => {
+    expect(
+      summarizeBuildFailure({
+        name: "typecheck",
+        status: "failed" as const,
+        detail: "some other tool's output",
+      }),
+    ).toEqual({});
+  });
+});
+
+describe("summarizeTestResult", () => {
+  it("parses vitest's summary line and first failure marker", () => {
+    const result = {
+      name: "test",
+      status: "failed" as const,
+      detail: "FAIL src/a.test.ts\nTests  1 failed | 9 passed (10)",
+    };
+
+    expect(summarizeTestResult(result)).toEqual({
+      passed: 9,
+      failed: 1,
+      firstFailure: "FAIL src/a.test.ts",
+    });
   });
 });

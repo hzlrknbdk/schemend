@@ -3,7 +3,12 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { LanguageAdapter } from "@schemend/core";
-import { build, test } from "./checks.js";
+import {
+  build,
+  summarizeBuildFailure,
+  summarizeTestResult,
+  test,
+} from "./checks.js";
 import {
   assertDockerVisibility,
   assertNotMultiModule,
@@ -39,6 +44,8 @@ export const javaAdapter: LanguageAdapter = {
   findAffected,
   build,
   test,
+  summarizeBuildFailure,
+  summarizeTestResult,
   dockerImage: `schemend-lang-java:3.9.9-temurin21-${DOCKERFILE_HASH}`,
   dockerfile: DOCKERFILE,
   // `dependency:go-offline` alone misses artifacts Maven only resolves once a real goal actually

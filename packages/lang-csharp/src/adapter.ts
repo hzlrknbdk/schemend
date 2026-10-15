@@ -3,7 +3,12 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { LanguageAdapter } from "@schemend/core";
-import { build, test } from "./checks.js";
+import {
+  build,
+  summarizeBuildFailure,
+  summarizeTestResult,
+  test,
+} from "./checks.js";
 import {
   assertDockerVisibility,
   discoverApis,
@@ -41,6 +46,8 @@ export const csharpAdapter: LanguageAdapter = {
   findAffected,
   build,
   test,
+  summarizeBuildFailure,
+  summarizeTestResult,
   dockerImage: `schemend-lang-csharp:sdk10.0-${DOCKERFILE_HASH}`,
   dockerfile: DOCKERFILE,
   // Must restore the exact same target build/test/findAffected use (SPEC §4) - a .sln/.slnx if

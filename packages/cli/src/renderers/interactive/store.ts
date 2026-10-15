@@ -106,19 +106,29 @@ function describeToolResult(
     case "edit_file":
       return `<- ${event.tool} ${event.file} (${event.status})`;
     case "run_build": {
+      // `status` is only whether the tool call itself crashed - `checkStatus` is the real build
+      // outcome (see plain.ts's formatToolResult for the same distinction).
+      const outcome =
+        event.status === "error"
+          ? "tool error"
+          : (event.checkStatus ?? "unknown");
       const detail =
         event.errorCount !== undefined
           ? `, ${event.errorCount} error(s)${event.firstError ? `: ${event.firstError}` : ""}`
           : "";
-      return `<- run_build (${event.status})${detail}`;
+      return `<- run_build (${outcome})${detail}`;
     }
     case "run_tests": {
+      const outcome =
+        event.status === "error"
+          ? "tool error"
+          : (event.checkStatus ?? "unknown");
       const counts =
         event.passed !== undefined || event.failed !== undefined
           ? `, ${event.passed ?? 0} passed / ${event.failed ?? 0} failed`
           : "";
       const detail = event.firstFailure ? `: ${event.firstFailure}` : "";
-      return `<- run_tests (${event.status})${counts}${detail}`;
+      return `<- run_tests (${outcome})${counts}${detail}`;
     }
   }
 }

@@ -52,3 +52,35 @@ export async function test(ctx: AdapterContext): Promise<CheckResult> {
   const result = await ctx.exec("pnpm test");
   return toCheckResult("test", result.exitCode, result.stdout, result.stderr);
 }
+
+/** tsc's error lines look like "foo.ts(1,2): error TS2345: ...". Returns {} for anything else. */
+export function summarizeBuildFailure(result: CheckResult): {
+  errorCount?: number;
+  firstError?: string;
+} {
+  const matches = result.detail?.match(/error TS\d+[^\n]*/g);
+  if (!matches || matches.length === 0) return {};
+  return { errorCount: matches.length, firstError: matches[0]?.trim() };
+}
+
+/**
+ * Matches vitest's default reporter summary line ("Tests  1 failed | 9 passed (10)") and its
+ * first failing-test marker line. Returns whichever parts it recognizes.
+ */
+export function summarizeTestResult(result: CheckResult): {
+  passed?: number;
+  failed?: number;
+  firstFailure?: string;
+} {
+  if (!result.detail) return {};
+  const summary = result.detail.match(
+    /Tests\s+(?:(\d+) failed \| )?(\d+) passed/,
+  );
+  const failureLine = result.detail.match(/^\s*(?:✗|×|FAIL)\s+.+$/m);
+  return {
+    ...(summary
+      ? { passed: Number(summary[2]), failed: Number(summary[1] ?? 0) }
+      : {}),
+    ...(failureLine ? { firstFailure: failureLine[0].trim() } : {}),
+  };
+}

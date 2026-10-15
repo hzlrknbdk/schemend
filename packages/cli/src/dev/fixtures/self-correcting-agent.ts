@@ -169,6 +169,7 @@ export const events: CheckEvent[] = [
     toolUseId: "tu_3",
     tool: "run_build",
     status: "success",
+    checkStatus: "passed",
   },
   {
     type: "agent-tool-call",
@@ -183,7 +184,8 @@ export const events: CheckEvent[] = [
     api: "orders",
     toolUseId: "tu_4",
     tool: "run_tests",
-    status: "error",
+    status: "success",
+    checkStatus: "failed",
     passed: 9,
     failed: 1,
     firstFailure:
@@ -246,6 +248,7 @@ export const events: CheckEvent[] = [
     toolUseId: "tu_7",
     tool: "run_build",
     status: "success",
+    checkStatus: "passed",
   },
   {
     type: "agent-tool-call",
@@ -261,6 +264,7 @@ export const events: CheckEvent[] = [
     toolUseId: "tu_8",
     tool: "run_tests",
     status: "success",
+    checkStatus: "passed",
     passed: 10,
     failed: 0,
   },

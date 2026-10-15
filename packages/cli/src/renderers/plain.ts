@@ -26,19 +26,29 @@ function formatToolResult(
     case "edit_file":
       return `${event.api}: agent <- ${event.tool} ${event.file} (${event.status})`;
     case "run_build": {
+      // `status` is only whether the tool call itself crashed (run_build never throws on a
+      // failed build) - `checkStatus` is the actual build outcome, the one worth leading with.
+      const outcome =
+        event.status === "error"
+          ? "tool error"
+          : (event.checkStatus ?? "unknown");
       const detail =
         event.errorCount !== undefined
           ? `, ${event.errorCount} error(s)${event.firstError ? `: ${event.firstError}` : ""}`
           : "";
-      return `${event.api}: agent <- run_build (${event.status})${detail}`;
+      return `${event.api}: agent <- run_build (${outcome})${detail}`;
     }
     case "run_tests": {
+      const outcome =
+        event.status === "error"
+          ? "tool error"
+          : (event.checkStatus ?? "unknown");
       const counts =
         event.passed !== undefined || event.failed !== undefined
           ? `, ${event.passed ?? 0} passed / ${event.failed ?? 0} failed`
           : "";
       const detail = event.firstFailure ? `: ${event.firstFailure}` : "";
-      return `${event.api}: agent <- run_tests (${event.status})${counts}${detail}`;
+      return `${event.api}: agent <- run_tests (${outcome})${counts}${detail}`;
     }
   }
 }

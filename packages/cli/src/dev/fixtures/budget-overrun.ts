@@ -160,6 +160,7 @@ export const events: CheckEvent[] = [
     toolUseId: "tu_2",
     tool: "run_build",
     status: "success",
+    checkStatus: "passed",
   },
   {
     type: "agent-tool-call",
@@ -175,6 +176,7 @@ export const events: CheckEvent[] = [
     toolUseId: "tu_3",
     tool: "run_tests",
     status: "success",
+    checkStatus: "passed",
     passed: 10,
     failed: 0,
   },

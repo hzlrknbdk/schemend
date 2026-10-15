@@ -3,7 +3,12 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { LanguageAdapter } from "@schemend/core";
-import { build, test } from "./checks.js";
+import {
+  build,
+  summarizeBuildFailure,
+  summarizeTestResult,
+  test,
+} from "./checks.js";
 import { detect, discoverApis, regenerateClient } from "./discover.js";
 import { findAffected } from "./impact.js";
 
@@ -30,6 +35,8 @@ export const typescriptAdapter: LanguageAdapter = {
   findAffected,
   build,
   test,
+  summarizeBuildFailure,
+  summarizeTestResult,
   dockerImage: `schemend-lang-typescript:24.21.0-pnpm10.18.3-${DOCKERFILE_HASH}`,
   dockerfile: DOCKERFILE,
   installCommand: "pnpm install --frozen-lockfile",

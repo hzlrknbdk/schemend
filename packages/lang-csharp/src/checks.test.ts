@@ -3,7 +3,12 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Exec, ExecResult } from "@schemend/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { build, test } from "./checks.js";
+import {
+  build,
+  summarizeBuildFailure,
+  summarizeTestResult,
+  test,
+} from "./checks.js";
 
 let root: string;
 
@@ -108,5 +113,69 @@ describe("test", () => {
       "dotnet test src/Notification/Notification.csproj --no-restore",
     ]);
     expect(result).toEqual({ name: "test", status: "passed" });
+  });
+});
+
+// Real `dotnet build` output (same shape impact.ts's own ERROR_LINE_RE parses): the same error
+// repeats once inline, once in the "Build FAILED" summary.
+const REAL_BUILD_FAILURE = [
+  "/workspace/services/notification/src/Notification/Program.cs(20,44): error CS1061: 'Order' does not contain a definition for 'TotalPrice' [/workspace/services/notification/src/Notification/Notification.csproj]",
+  "",
+  "Build FAILED.",
+  "",
+  "/workspace/services/notification/src/Notification/Program.cs(20,44): error CS1061: 'Order' does not contain a definition for 'TotalPrice' [/workspace/services/notification/src/Notification/Notification.csproj]",
+  "    0 Warning(s)",
+  "    1 Error(s)",
+].join("\n");
+
+// Real `dotnet test` output against a deliberately broken assertion.
+const REAL_TEST_FAILURE = [
+  "Test run for /workspace/services/notification/tests/Notification.Tests/bin/Debug/net10.0/Notification.Tests.dll (.NETCoreApp,Version=v10.0)",
+  "  Failed Notification.Tests.ReceiptFormatterTests.FormatsTheTotalWithTheHardcodedTlSuffix [4 ms]",
+  "  Error Message:",
+  "   Assert.Equal() Failure: Strings differ",
+  "Failed!  - Failed:     1, Passed:     1, Skipped:     0, Total:     2, Duration: 182 ms - Notification.Tests.dll (net10.0)",
+].join("\n");
+
+describe("summarizeBuildFailure", () => {
+  it("counts distinct file:line:code errors (not raw line repeats) and reports the first", () => {
+    const result = {
+      name: "build",
+      status: "failed" as const,
+      detail: REAL_BUILD_FAILURE,
+    };
+
+    expect(summarizeBuildFailure(result)).toEqual({
+      errorCount: 1,
+      firstError:
+        "CS1061: 'Order' does not contain a definition for 'TotalPrice'",
+    });
+  });
+
+  it("returns {} when nothing looks like an MSBuild error", () => {
+    expect(
+      summarizeBuildFailure({
+        name: "build",
+        status: "failed" as const,
+        detail: "some other tool's output",
+      }),
+    ).toEqual({});
+  });
+});
+
+describe("summarizeTestResult", () => {
+  it("parses dotnet test's summary line and first failure marker", () => {
+    const result = {
+      name: "test",
+      status: "failed" as const,
+      detail: REAL_TEST_FAILURE,
+    };
+
+    expect(summarizeTestResult(result)).toEqual({
+      passed: 1,
+      failed: 1,
+      firstFailure:
+        "Notification.Tests.ReceiptFormatterTests.FormatsTheTotalWithTheHardcodedTlSuffix",
+    });
   });
 });

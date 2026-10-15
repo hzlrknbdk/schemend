@@ -124,7 +124,9 @@ describe("reduceEvents", () => {
       const state = replay(FIXTURES["self-correcting-agent"] ?? []);
       expect(state.apis.orders?.service?.confidence).toBe("verified-by-tests");
       expect(
-        state.apis.orders?.toolLog.some((entry) => entry.status === "error"),
+        state.apis.orders?.toolLog.some(
+          (entry) => "checkStatus" in entry && entry.checkStatus === "failed",
+        ),
       ).toBe(false); // the failing run_tests result fell out of the 8-entry window by the end
     });
 
