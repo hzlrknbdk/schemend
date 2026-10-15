@@ -23,6 +23,10 @@ function failed(stderr: string, exitCode = 1): ExecResult {
   return { exitCode, stdout: "", stderr };
 }
 
+function failedBoth(stdout: string, stderr: string): ExecResult {
+  return { exitCode: 1, stdout, stderr };
+}
+
 function recordingExec(commands: string[]): Exec {
   return async (cmd) => {
     commands.push(cmd);
@@ -48,6 +52,32 @@ describe("build", () => {
 
     expect(result.status).toBe("failed");
     expect(result.detail).toContain("cannot find symbol");
+  });
+
+  it("combines stdout and stderr on failure, instead of only using one", async () => {
+    const exec: Exec = async () =>
+      failedBoth(
+        "[ERROR] cannot find symbol: method getTotalPrice()",
+        "mkdir: cannot create directory '/root': Permission denied",
+      );
+
+    const result = await build({ root, exec });
+
+    expect(result.status).toBe("failed");
+    expect(result.detail).toContain("getTotalPrice");
+    expect(result.detail).toContain("Permission denied");
+  });
+
+  it("truncates an overly long combined detail, keeping head and tail", async () => {
+    const exec: Exec = async () =>
+      failedBoth(`HEAD${"x".repeat(5000)}TAIL`, "");
+
+    const result = await build({ root, exec });
+
+    expect(result.detail?.length).toBeLessThan(5000);
+    expect(result.detail).toContain("HEAD");
+    expect(result.detail).toContain("TAIL");
+    expect(result.detail).toContain("truncated");
   });
 });
 

@@ -40,6 +40,10 @@ function recordingExec(commands: string[], exitCode = 0): Exec {
   };
 }
 
+function failingExec(stdout: string, stderr: string): Exec {
+  return async () => ({ exitCode: 1, stdout, stderr });
+}
+
 describe("build", () => {
   it("targets the test project (so it also compiles the main project), with --no-restore", async () => {
     await write("src/Notification/Notification.csproj", MAIN_CSPROJ);
@@ -64,6 +68,32 @@ describe("build", () => {
     const result = await build({ root, exec: recordingExec(commands, 1) });
 
     expect(result).toEqual({ name: "build", status: "failed", detail: "boom" });
+  });
+
+  it("combines stdout and stderr on failure, instead of only using one", async () => {
+    await write("src/Notification/Notification.csproj", MAIN_CSPROJ);
+    const exec = failingExec(
+      "error CS1061: 'Order' does not contain a definition for 'TotalPrice'",
+      "An issue was encountered verifying workloads.",
+    );
+
+    const result = await build({ root, exec });
+
+    expect(result.status).toBe("failed");
+    expect(result.detail).toContain("CS1061");
+    expect(result.detail).toContain("verifying workloads");
+  });
+
+  it("truncates an overly long combined detail, keeping head and tail", async () => {
+    await write("src/Notification/Notification.csproj", MAIN_CSPROJ);
+    const exec = failingExec(`HEAD${"x".repeat(5000)}TAIL`, "");
+
+    const result = await build({ root, exec });
+
+    expect(result.detail?.length).toBeLessThan(5000);
+    expect(result.detail).toContain("HEAD");
+    expect(result.detail).toContain("TAIL");
+    expect(result.detail).toContain("truncated");
   });
 });
 
