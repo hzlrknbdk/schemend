@@ -109,9 +109,13 @@ function fakeAdapter(): LanguageAdapter {
   };
 }
 
+let originalApiKey: string | undefined;
+
 beforeEach(() => {
   mockedDiff.mockReset();
   mockedQuery.mockReset();
+  originalApiKey = process.env.ANTHROPIC_API_KEY;
+  process.env.ANTHROPIC_API_KEY = "sk-ant-test-key";
 });
 
 // Each test's root is a fresh temp dir, so ensureDockerCtx's per-root dependency volume (see
@@ -130,6 +134,8 @@ afterEach(async () => {
       await rm(dir, { recursive: true, force: true });
     }),
   );
+  if (originalApiKey === undefined) delete process.env.ANTHROPIC_API_KEY;
+  else process.env.ANTHROPIC_API_KEY = originalApiKey;
 });
 
 describe("runCheck cancellation mid-fix: what's left on disk and in git", () => {

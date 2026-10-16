@@ -5,6 +5,7 @@ import {
   DockerUnavailableError,
   diffSchemas,
   loadConfig,
+  MissingApiKeyError,
   runCheck,
   VERSION,
 } from "@schemend/core";
@@ -131,6 +132,11 @@ program
           return;
         }
         if (error instanceof ConfigValidationError) {
+          console.error(error.message);
+          process.exitCode = 1;
+          return;
+        }
+        if (error instanceof MissingApiKeyError) {
           console.error(error.message);
           process.exitCode = 1;
           return;

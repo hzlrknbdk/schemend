@@ -23,6 +23,24 @@ import type {
   ReviewItem,
 } from "./types.js";
 
+/**
+ * Thrown before the SDK is ever called, when ANTHROPIC_API_KEY isn't set. Without this check, a
+ * missing key doesn't fail the way SPEC §9 ("missing key" is a clear, never-silent error)
+ * promises - the SDK's spawned subprocess falls through to whatever auth the host's own `claude`
+ * CLI already has configured (e.g. a Pro/Max subscription login), which this product does not
+ * support (SPEC §1/§5: the user brings their own Anthropic API key; cost is tracked in USD against
+ * that key, which a subscription login has no equivalent of).
+ */
+export class MissingApiKeyError extends Error {
+  constructor() {
+    super(
+      "ANTHROPIC_API_KEY is not set. schemend needs your own Anthropic API key (see " +
+        "SPEC §5) - a Claude subscription/OAuth login is not a supported substitute.",
+    );
+    this.name = "MissingApiKeyError";
+  }
+}
+
 export interface FixAgentInput {
   ctx: AdapterContext;
   adapter: Pick<LanguageAdapter, "build" | "test" | "findAffected">;
@@ -191,6 +209,19 @@ export async function runFixAgent(
     };
   }
 
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey || apiKey.trim() === "") {
+    emit({
+      type: "step-finished",
+      api,
+      step: "fix",
+      durationMs: Date.now() - fixStartedAt,
+      status: "failed",
+      reason: "missing-api-key",
+    });
+    throw new MissingApiKeyError();
+  }
+
   try {
     budget.assertAvailable();
   } catch (error) {
@@ -249,6 +280,11 @@ export async function runFixAgent(
       strictMcpConfig: true,
       permissionMode: "bypassPermissions",
       settingSources: [],
+      // Guarantees the key just validated above is what the spawned subprocess actually uses,
+      // rather than leaving it to implicit process.env inheritance (same isolation reasoning as
+      // settingSources: [] above - this one closes the specific gap SPEC §9's "missing key"
+      // error exists for, see MissingApiKeyError's own doc comment).
+      env: { ...process.env, ANTHROPIC_API_KEY: apiKey },
       maxBudgetUsd: budget.remaining,
       ...(input.abortController !== undefined
         ? { abortController: input.abortController }

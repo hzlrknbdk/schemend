@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { AbortError, query } from "@anthropic-ai/claude-agent-sdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { finalizeReview, runFixAgent } from "./agent.js";
+import { finalizeReview, MissingApiKeyError, runFixAgent } from "./agent.js";
 import { buildAgentTools } from "./agent-tools.js";
 import { Budget } from "./budget.js";
 import type { CheckEvent } from "./events.js";
@@ -101,6 +101,7 @@ function userToolResult(toolUseId: string, text: string, isError = false) {
 }
 
 let root: string;
+let originalApiKey: string | undefined;
 
 const passingAdapter = {
   build: async (): Promise<CheckResult> => ({
@@ -141,10 +142,17 @@ beforeEach(async () => {
   await writeFile(path.join(root, "src/lib/shipping.ts"), "old content");
   mockedQuery.mockReset();
   mockedBuildAgentTools.mockClear();
+  // Every test gets a deterministic fake key, regardless of the host shell's own
+  // ANTHROPIC_API_KEY - the "missing key" test below unsets it for itself and restores it in its
+  // own afterEach-equivalent cleanup.
+  originalApiKey = process.env.ANTHROPIC_API_KEY;
+  process.env.ANTHROPIC_API_KEY = "sk-ant-test-key";
 });
 
 afterEach(async () => {
   await rm(root, { recursive: true, force: true });
+  if (originalApiKey === undefined) delete process.env.ANTHROPIC_API_KEY;
+  else process.env.ANTHROPIC_API_KEY = originalApiKey;
 });
 
 function ctx() {
@@ -621,6 +629,75 @@ describe("runFixAgent cancellation", () => {
         api: "orders",
       }),
     ).rejects.toThrow("boom");
+  });
+});
+
+describe("runFixAgent missing API key", () => {
+  it("throws MissingApiKeyError and never calls the SDK when ANTHROPIC_API_KEY is unset", async () => {
+    delete process.env.ANTHROPIC_API_KEY;
+    const events: CheckEvent[] = [];
+
+    await expect(
+      runFixAgent({
+        ctx: ctx(),
+        adapter: passingAdapter,
+        apiEntry,
+        affected,
+        changes: [change],
+        budget: new Budget(1),
+        model: "claude-sonnet-5",
+        api: "orders",
+        onEvent: (event) => events.push(event),
+      }),
+    ).rejects.toThrow(MissingApiKeyError);
+
+    expect(mockedQuery).not.toHaveBeenCalled();
+    expect(events.map((event) => event.type)).toEqual([
+      "step-started",
+      "step-finished",
+    ]);
+    expect(events[1]).toMatchObject({
+      step: "fix",
+      status: "failed",
+      reason: "missing-api-key",
+    });
+  });
+
+  it("throws MissingApiKeyError when ANTHROPIC_API_KEY is set but blank", async () => {
+    process.env.ANTHROPIC_API_KEY = "   ";
+
+    await expect(
+      runFixAgent({
+        ctx: ctx(),
+        adapter: passingAdapter,
+        apiEntry,
+        affected,
+        changes: [change],
+        budget: new Budget(1),
+        model: "claude-sonnet-5",
+        api: "orders",
+      }),
+    ).rejects.toThrow(MissingApiKeyError);
+    expect(mockedQuery).not.toHaveBeenCalled();
+  });
+
+  it("passes the validated key through to the SDK's own env, not bare inheritance", async () => {
+    process.env.ANTHROPIC_API_KEY = "sk-ant-real-key";
+    mockedQuery.mockImplementation(() => fakeQuery([resultMessage()]));
+
+    await runFixAgent({
+      ctx: ctx(),
+      adapter: passingAdapter,
+      apiEntry,
+      affected,
+      changes: [change],
+      budget: new Budget(1),
+      model: "claude-sonnet-5",
+      api: "orders",
+    });
+
+    const options = mockedQuery.mock.calls[0]?.[0]?.options;
+    expect(options?.env?.ANTHROPIC_API_KEY).toBe("sk-ant-real-key");
   });
 });
 

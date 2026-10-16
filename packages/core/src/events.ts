@@ -6,7 +6,7 @@ import type {
   ServiceResult,
 } from "./types.js";
 
-export const EVENT_SCHEMA_VERSION = 3;
+export const EVENT_SCHEMA_VERSION = 4;
 
 export type CheckStepName =
   | "detect"
@@ -24,6 +24,7 @@ export type StepFailureReason =
   | "budget-exceeded"
   | "cancelled"
   | "docker-unavailable"
+  | "missing-api-key"
   | "schema-read-failed"
   | "other";
 
