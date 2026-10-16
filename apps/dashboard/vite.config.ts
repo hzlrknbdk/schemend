@@ -38,20 +38,13 @@ export default defineConfig(({ mode }) => {
       viteTsConfigPaths({ projects: ["./tsconfig.json"] }),
       tailwindcss(),
       tanstackStart({
-        // "demo" mode (default) reads from MockRepository, which resolves synchronously, so
-        // every route can be prerendered to static HTML at build time, same as apps/landing.
-        // "local" mode reads from HttpRepository (schemend ui's future local server, v1.1),
-        // which doesn't exist at build time, so prerendering is skipped and the app ships as
-        // a client-rendered SPA shell.
+        // "demo" resolves synchronously (MockRepository), so it prerenders at build time;
+        // "local" reads HttpRepository's future server (v1.1) and ships as an SPA shell instead.
         prerender: {
           enabled: env.VITE_SCHEMEND_MODE !== "local",
           crawlLinks: true,
-          // Query-string variants of an already-prerendered route (e.g. /impact?run=...)
-          // serve the same static index.html on any static host — the query string never
-          // affects file resolution, only client-side hydration does. Also works around an
-          // upstream bug: @tanstack/start-plugin-core's crawler appends a trailing slash
-          // after the query string instead of before it, producing a 404 for any crawled
-          // link that has a search param.
+          // Works around an upstream crawler bug that 404s a query-string route (e.g.
+          // /impact?run=...) - the query string never affects which static file is served anyway.
           filter: (page) => !page.path.includes("?"),
         },
       }),

@@ -82,17 +82,11 @@ async function ensureBranch(ctx: AdapterContext): Promise<void> {
 
 /**
  * Builds the Docker-backed AdapterContext build/test run through (SPEC §4/§6): ensures the
- * adapter's image and dependency volume exist, prunes any older volume for this same root, then
- * returns a context whose exec runs with that volume mounted and the network disabled.
- *
- * Both install and the returned exec mount `repoRoot` read-only at /workspace, with `root`
- * layered read-write on top at its real position under it, cwd'd there - not just `root` alone -
- * so a sibling schema reference (SPEC §5's "../orders/openapi.json") resolves correctly
- * regardless of how many `../` segments it takes to get there. They differ only in network:
- * install gets the registry (`bridge`), the final exec is `none` - see DECISIONS.md. This is why
- * install needs its own visibility check: unlike the final exec, it runs with network access, so
- * `assertDockerVisibility` validates anything a pom.xml/build file points to before any of this
- * is mounted into a container that can reach the internet.
+ * adapter's image and dependency volume exist, then returns a context whose exec runs with that
+ * volume mounted and the network disabled. Both install and the returned exec mount `repoRoot`
+ * read-only at /workspace with `root` layered read-write on top, so a sibling schema reference
+ * (SPEC §5) resolves - they differ only in network (install: `bridge`, final exec: `none`, see
+ * DECISIONS.md), which is why only install needs `assertDockerVisibility` first.
  */
 export interface DockerCtx {
   ctx: AdapterContext;
@@ -181,11 +175,7 @@ export async function ensureDockerCtx(
   };
 }
 
-/**
- * Stages everything under ctx.root and commits it if there's anything to commit. `--relative`
- * keeps the reported paths relative to ctx.root even when it's a subdirectory of the repo, same
- * as every other path this package produces (findAffected, discoverApis, ...).
- */
+/** Stages and commits everything under ctx.root, if anything changed. `--relative` keeps paths relative to ctx.root even when it's a subdirectory of the repo, same as findAffected/discoverApis. */
 async function commitAll(
   ctx: AdapterContext,
   message: string,
@@ -202,12 +192,7 @@ async function commitAll(
   return commit.exitCode === 0 ? changedFiles : [];
 }
 
-/**
- * `schemend check` (SPEC §9): the local, no-push half of the SPEC §2 flow (steps 2-7) for one
- * consumer. Shares one Budget across every api in config.apis (SPEC §6: stop once it's gone,
- * report the rest). All fixes for this run land as commits on one local branch, matching "one PR
- * per consumer service" (SPEC §2 step 7) - `schemend run` pushes it and opens that PR.
- */
+/** `schemend check` (SPEC §9): the local, no-push half of SPEC §2's flow for one consumer. Shares one Budget across every api in config.apis; all fixes land as commits on one local branch, matching "one PR per consumer" - `schemend run` pushes it and opens that PR. */
 export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
   const { config, root, exec, adapters } = options;
   const baseRef = options.baseRef ?? "HEAD~1";
@@ -327,17 +312,11 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
     // SPEC §2 step 3: baseline BEFORE anything (including regeneration) changes.
     const baselineStartedAt = Date.now();
     emit({ type: "step-started", api, step: "baseline" });
-    // Swapped to the old schema before ensureDockerCtx, not just around the build/test calls
-    // below - Java's installCommand (a real `mvn test` warm-up, see DECISIONS.md) regenerates
-    // the client and compiles against whatever's on `newSchemaFile` too, on a fresh dependency
-    // volume's first run. With the new (breaking) schema still in place at that point, the
-    // warm-up's own compile fails before Maven ever reaches the test phase, so surefire's own
-    // plugin dependencies never get resolved into the volume; the real baseline build then
-    // compiles fine against the swapped-back old schema, but its --network none test call fails
-    // to resolve those never-cached dependencies - a dependency-resolution error that looks
-    // nothing like the schema change, discovered via a real paid milestone run against
-    // services/invoice. The restore stays unconditional so a thrown/cancelled run never leaves
-    // the real schema file swapped out.
+    // Swapped before ensureDockerCtx, not just around build/test: Java/C#'s install step also
+    // regenerates/compiles against newSchemaFile on a fresh volume, which can leave dependencies
+    // uncached if that happens against the breaking schema (see DECISIONS.md, 2026-10-15). The
+    // restore below stays unconditional so a thrown/cancelled run never leaves the real schema
+    // file swapped out.
     const currentSchemaContent = await readFile(newSchemaFile, "utf-8");
     await writeFile(newSchemaFile, oldSchemaContent);
     let baselineBuild: CheckResult;

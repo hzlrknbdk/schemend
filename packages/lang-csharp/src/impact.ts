@@ -15,10 +15,8 @@ interface MsBuildDiagnostic {
   message: string;
 }
 
-// `<file>(line,col): error CSxxxx: <message> [<project path>]` - dotnet build's standard console
-// format. The trailing `[<project>]` is optional in the match since it's only present on the
-// inline, per-project occurrence, not the aggregated "error list" dotnet build prints again just
-// before its final Build FAILED summary - both are parsed the same way, deduplicated below.
+// `<file>(line,col): error CSxxxx: <message> [<project>]` - dotnet build's console format. The
+// trailing `[<project>]` is optional since the end-of-build "error list" omits it; both parse the same.
 const ERROR_LINE_RE =
   /^(.+\.cs)\((\d+),\d+\): error (CS\d+): (.*?)(?: \[.*\])?$/;
 
@@ -53,11 +51,7 @@ function identifiersIn(change: ApiChange): string[] {
     .filter((id): id is string => Boolean(id));
 }
 
-/**
- * NSwag generates PascalCase properties (e.g. `TotalPrice`) directly - no getter method the way
- * Java's accessors need - but keeps method parameters close to their original casing, so both the
- * oasdiff identifier as-is and its PascalCase form are checked.
- */
+/** NSwag generates PascalCase properties directly (no getter, unlike Java) but keeps parameters close to original casing - both forms are checked. */
 function csharpIdentifierVariants(id: string): string[] {
   const pascal = id.charAt(0).toUpperCase() + id.slice(1);
   return [id, pascal];
@@ -76,14 +70,7 @@ function matchChange(
   );
 }
 
-/**
- * Locates code affected by a schema change (SPEC §2 step 4). Builds the same target
- * build()/test() use (SPEC §4/§6: the test project when one exists, so its ProjectReference also
- * compiles the main project - the C# equivalent of Java's `test-compile` reach). Like Java's
- * Maven lifecycle, a main-code failure can hide a test-only error that only becomes reachable
- * once the main code compiles; that gap is closed by agent-tools.ts re-running this same function
- * from run_build, not by anything here.
- */
+/** Locates code affected by a schema change (SPEC §2 step 4), building the same target build()/test() use. As with Java, a main-code failure can hide a test-only error until agent-tools.ts re-runs this from run_build. */
 export async function findAffected(
   ctx: AdapterContext,
   _api: ApiEntry,

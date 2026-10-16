@@ -40,10 +40,8 @@ function targetFor(change: OasdiffChange): string {
   return opAndPath || change.section || change.id || "unknown";
 }
 
-// oasdiff's own `id` names the check that fired (e.g. "request-body-type-changed"), not a
-// per-instance identifier: the same check fires once per affected operation/path, so two
-// instances can share it. Combine it with operation/path and the array index to get an id
-// that's actually unique within the returned list.
+// oasdiff's own `id` names the check (e.g. "request-body-type-changed"), not a per-instance
+// identifier - two instances can share it, so combine with operation/path/index for uniqueness.
 function uniqueId(change: OasdiffChange, index: number): string {
   const parts = [change.id, change.operation, change.path].filter(Boolean);
   return `${parts.length > 0 ? parts.join(":") : "change"}#${index}`;
@@ -63,22 +61,13 @@ function toApiChange(change: OasdiffChange, index: number): ApiChange {
   };
 }
 
-/**
- * Parses `oasdiff changelog -f json`'s raw output into ApiChange[]. Exported (not just used
- * inside diffSchemas) so other packages' tests can replay a real, saved oasdiff response without
- * needing Docker - see packages/lang-typescript/src/fixtures.
- */
+/** Parses `oasdiff changelog -f json`'s raw output into ApiChange[]. Exported so other packages' tests can replay a real, saved response without needing Docker. */
 export function parseOasdiffChangelog(json: string): ApiChange[] {
   const changes: OasdiffChange[] = JSON.parse(json);
   return changes.map(toApiChange);
 }
 
-/**
- * Diffs two OpenAPI schema files with oasdiff's Docker image (SPEC §2 step 2). Copies both files
- * into a throwaway temp directory as old.json/new.json before mounting it read-only into the
- * container, so the container only ever sees the two schemas, never their surrounding directory.
- * exec is injected so core never spawns Docker itself (same pattern as AdapterContext.exec).
- */
+/** Diffs two OpenAPI schema files with oasdiff's Docker image (SPEC §2 step 2). Copies both into a throwaway temp dir as old.json/new.json first, so the container never sees their surrounding directory. */
 export async function diffSchemas(
   oldSchemaPath: string,
   newSchemaPath: string,

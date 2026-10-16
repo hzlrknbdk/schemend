@@ -46,10 +46,7 @@ type AgentToolResultDetail =
   | {
       tool: "run_build";
       status: "success" | "error";
-      /** Whether the underlying build actually passed - distinct from `status`, which is only
-       * whether the tool call itself crashed (run_build never throws on a failed build, so
-       * `status` alone would always read "success"). Absent only if the result text didn't look
-       * like schemend's own formatCheck wrapper at all (shouldn't happen in practice). */
+      /** Whether the build actually passed - distinct from `status`, which is only whether the tool call itself crashed (run_build never throws on a failed build). */
       checkStatus?: "passed" | "failed";
       errorCount?: number;
       firstError?: string;
@@ -63,13 +60,7 @@ type AgentToolResultDetail =
       firstFailure?: string;
     };
 
-/**
- * Everything runCheck/runFixAgent can report while they run (SPEC §9's progress output, generalized
- * beyond a single log line). Core only ever produces these and hands them to onEvent; it never
- * renders or prints anything itself. Discriminated on `type`; every variant carries `timestamp`
- * (ISO, for fixture replay / --record-events) and, except the two run-level ones, `api` (the
- * config.apis entry it's about, since one config can call several APIs).
- */
+/** Everything runCheck/runFixAgent report while running (SPEC §9); core only produces these, never renders anything itself. Discriminated on `type`; every variant carries `timestamp`, and all but the two run-level ones carry `api`. */
 export type CheckEvent = { timestamp: string } & (
   | {
       type: "run-started";

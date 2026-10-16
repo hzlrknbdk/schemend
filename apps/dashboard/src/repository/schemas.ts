@@ -13,13 +13,7 @@ import type {
 } from "@schemend/core";
 import { z } from "zod";
 
-/**
- * Mirrors @schemend/core's types field-for-field, each tied to its type with
- * `satisfies z.ZodType<T>` — if core's type gains/renames/retypes a field, the matching schema
- * fails to compile here instead of silently drifting and only failing at runtime against a real
- * server response. Used by HttpRepository only; MockRepository's data is already typed, not
- * parsed.
- */
+/** Mirrors @schemend/core's types field-for-field, each tied with `satisfies z.ZodType<T>` so a core change fails to compile here instead of drifting silently. Used by HttpRepository only. */
 const ApiSourceSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("openapi"), location: z.string() }),
   z.object({

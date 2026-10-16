@@ -18,12 +18,7 @@ function identifiersIn(change: ApiChange): string[] {
     .filter((id): id is string => Boolean(id));
 }
 
-/**
- * The first change whose identifier appears in the diagnostic text the same way tsc itself quotes
- * identifiers (single quotes, e.g. "Property 'totalPrice' does not exist on type ..."). Matching
- * the quotes too (not just the bare substring) avoids a short identifier like `total` spuriously
- * matching inside an unrelated one like `totalPrice`.
- */
+/** Matches the quotes tsc itself uses ('totalPrice'), not just a bare substring - avoids a short identifier like `total` spuriously matching inside `totalPrice`. */
 function matchChange(
   text: string,
   changes: ApiChange[],
@@ -33,16 +28,7 @@ function matchChange(
   );
 }
 
-/**
- * Locates code affected by a schema change (SPEC §2 step 4). Assumes the generated client has
- * already been regenerated to the new schema; loads the consumer's tsconfig project with
- * ts-morph and reads the resulting tsc diagnostics across the whole project (not just
- * api.usedIn: that's only a rough discovery hint, built from direct imports of the generated
- * client, and misses files that reach the same type indirectly — e.g. a component that imports
- * `Order` from the hand-written client wrapper rather than the generated file itself). Each
- * diagnostic is attributed to the ApiChange whose summary names the same identifier; a
- * diagnostic that matches no change is dropped rather than guessed at.
- */
+/** Locates code affected by a schema change (SPEC §2 step 4) via ts-morph's tsc diagnostics across the whole project, not just api.usedIn (a rough hint that misses indirect type reaches). An unmatched diagnostic is dropped, never guessed at. */
 export async function findAffected(
   ctx: AdapterContext,
   _api: ApiEntry,

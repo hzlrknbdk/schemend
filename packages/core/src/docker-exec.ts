@@ -16,12 +16,7 @@ function volumePrefix(root: string): string {
   return `schemend-deps-${rootHash(root)}-`;
 }
 
-/**
- * Bump whenever a volume created under the previous version would be wrong to reuse as-is (e.g.
- * this one: pre-`--user` volumes have root-owned content a plain top-level chown can't fix).
- * Folded into dependencyVolumeName's output, so pruneStaleDependencyVolumes removes old-scheme
- * volumes the same way it removes old-lockfile ones - no separate migration path needed.
- */
+/** Bump when an existing volume would be wrong to reuse as-is (e.g. pre-`--user` root-owned content) - pruneStaleDependencyVolumes then retires it like a lockfile change would. */
 const DEPENDENCY_VOLUME_SCHEME_VERSION = "v2";
 
 async function pathExists(target: string): Promise<boolean> {
@@ -41,11 +36,7 @@ export class UnsupportedWorkspaceError extends Error {
   }
 }
 
-/**
- * Throws UnsupportedWorkspaceError if `lockfile` is missing at `root`, or if any of
- * `workspaceMarkers` exists in an ancestor directory of `root` - both signal `root` is a member
- * of a larger workspace, not the standalone package v1's Docker mount assumes (SPEC §4).
- */
+/** Throws UnsupportedWorkspaceError if `root` looks like a workspace member rather than the standalone package v1's Docker mount assumes (SPEC §4). */
 export async function assertStandaloneProject(
   root: string,
   lockfile: string,
@@ -75,13 +66,7 @@ export async function assertStandaloneProject(
   }
 }
 
-/**
- * Deterministic name for `root`'s dependency volume, keyed by both the project and its lockfile's
- * content - a lockfile change (dependency added/bumped) produces a different name, so the run
- * naturally lands on a fresh, correctly-populated volume instead of reusing stale node_modules; the
- * old volume is left behind for pruneStaleDependencyVolumes to remove. Assumes the lockfile exists
- * (assertStandaloneProject is the boundary check for that).
- */
+/** Deterministic volume name keyed by `root` and the lockfile's content, so a dependency change lands on a fresh volume instead of reusing stale node_modules; the old one is left for pruneStaleDependencyVolumes. */
 export async function dependencyVolumeName(
   root: string,
   lockfilePath: string,
@@ -94,14 +79,7 @@ export async function dependencyVolumeName(
   return `${volumePrefix(root)}${lockHash}-${DEPENDENCY_VOLUME_SCHEME_VERSION}`;
 }
 
-/**
- * Re-anchors a `LanguageAdapter.dependencyVolumePath` (e.g. "/workspace/node_modules", written
- * assuming /workspace *is* the consumer root) under `containerConsumerPath` instead, for a
- * container where /workspace is mounted as the whole repo and the consumer only lives at a
- * subpath of it (see ensureDockerCtx, check.ts). A path that isn't under "/workspace" at all
- * (e.g. Java's "/opt/maven-repo", a location deliberately unrelated to the project tree) is
- * returned unchanged - it was never meant to move when the mount's meaning changes.
- */
+/** Re-anchors a `dependencyVolumePath` written as if /workspace were the consumer root to `containerConsumerPath` instead, now that /workspace is the whole repo (see ensureDockerCtx). A path outside "/workspace" (e.g. Java's "/opt/maven-repo") is unrelated to the project tree and returned unchanged. */
 export function rebaseDependencyVolumePath(
   dependencyVolumePath: string,
   containerConsumerPath: string,
@@ -120,12 +98,7 @@ export function resolveContainerPath(
   return path.join(repoRoot, rawPath.slice(prefix.length));
 }
 
-/**
- * Removes every dependency volume for `root` except `currentVolume` (e.g. ones left behind by an
- * older lockfile - see dependencyVolumeName). Best-effort: a listing or removal failure (including
- * a volume still in use by another running `schemend check`) is silently skipped, never thrown -
- * this is hygiene, not correctness.
- */
+/** Removes every other dependency volume for `root` (e.g. an older lockfile's). Best-effort - a listing/removal failure is skipped, never thrown; this is hygiene, not correctness. */
 export async function pruneStaleDependencyVolumes(
   exec: Exec,
   root: string,
@@ -147,11 +120,7 @@ export async function pruneStaleDependencyVolumes(
   }
 }
 
-/**
- * Ensures `image` exists locally, building it from `dockerfile` (its containing directory as the
- * build context) if missing - otherwise relies on `docker run`'s own implicit pull, same as
- * oasdiff's pre-existing third-party image.
- */
+/** Builds `image` from `dockerfile` if it doesn't exist locally yet; otherwise relies on `docker run`'s own implicit pull. */
 export async function ensureDockerImage(
   exec: Exec,
   image: string,
@@ -204,13 +173,9 @@ export interface DockerExecOptions {
 
 /**
  * Wraps any shell command to run inside `image`, with `root` mounted at /workspace (SPEC §4:
- * "Docker-vs-local decision stays in one place in core") - read-write by default, read-only with
- * `readOnlyRoot` (see DECISIONS.md: checks/install mount the whole repo read-only so a sibling
- * schema file resolves, with only the consumer's own directory, via `extraMounts`, writable).
- * Each call gets its own container name so a pending abort can `docker kill` exactly that
- * container - the underlying host exec has no signal support of its own, so this is the only
- * hook available without threading a signal through the whole Exec type (deferred, see
- * DECISIONS.md).
+ * the Docker-vs-local decision stays in one place in core). Each call gets its own container
+ * name so a pending abort can `docker kill` exactly that one - the host exec has no signal
+ * support of its own, so this is the only cancellation hook available (see DECISIONS.md).
  */
 export function createDockerExec(
   hostExec: Exec,
@@ -263,14 +228,7 @@ export function createDockerExec(
   };
 }
 
-/**
- * Docker creates a fresh named volume owned by root:root; a non-root `user` writing into it
- * (install, then every build/test call) would get EACCES on the mount point itself without this.
- * Runs as root (no `user` option) specifically to be able to chown to someone else. Only the
- * mount point needs fixing, not every file under it, because DEPENDENCY_VOLUME_SCHEME_VERSION
- * guarantees `volume` is always freshly created under this scheme - never pre-populated by an
- * older, root-owned install.
- */
+/** A fresh named volume is owned by root:root; a non-root `user` writing into it would get EACCES without this chown, run as root specifically to perform it. Only the mount point needs fixing - DEPENDENCY_VOLUME_SCHEME_VERSION guarantees `volume` is always freshly created. */
 export async function chownDependencyVolume(
   exec: Exec,
   image: string,
@@ -301,12 +259,7 @@ export interface ContainerDepsOptions {
   cwd?: string;
 }
 
-/**
- * Installs `root`'s dependencies inside `image`, into the given named volume, with network access
- * (SPEC §6: only install needs the network; the build/test exec this feeds is `--network none`).
- * `readOnlyRoot`/`extraMounts`/`cwd` mirror DockerExecOptions - see ensureDockerCtx (check.ts),
- * which mounts the whole repo here too, for the same reason as the final build/test exec.
- */
+/** Installs `root`'s dependencies into the given named volume, with network access (SPEC §6: only install needs it; the build/test exec this feeds is `--network none`). */
 export async function ensureContainerDeps(
   options: ContainerDepsOptions,
 ): Promise<void> {

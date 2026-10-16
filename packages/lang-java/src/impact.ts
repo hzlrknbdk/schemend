@@ -14,17 +14,12 @@ interface JavacDiagnostic {
   message: string;
 }
 
-// `[ERROR] <path>.java:[line,col] <message>`, the only two forms javac's own continuation lines
-// ("symbol:"/"location:") show up in - unprefixed under the mid-build "COMPILATION ERROR" banner,
-// `[ERROR]`-prefixed in the end-of-build "Failed to execute goal" summary - captured from a real
-// `mvn -q test-compile` run (see src/fixtures/mvn-test-compile-*.txt), not guessed.
+// `[ERROR] <path>.java:[line,col] <message>` - captured from a real `mvn -q test-compile` run
+// (see src/fixtures/mvn-test-compile-*.txt), not guessed.
 const ERROR_LINE_RE = /^\[ERROR\] (.+\.java):\[(\d+),\d+\] (.*)$/;
 const CONTINUATION_RE = /^(?:\[ERROR\])? {2,}(symbol|location): *(.*)$/;
 
-/**
- * Both the mid-build and end-of-build occurrences of the same error parse to the same
- * file+line key, so this only keeps the first text seen per key.
- */
+/** The mid-build and end-of-build occurrences of the same error share a file+line key, so only the first text seen per key is kept. */
 function parseJavacDiagnostics(output: string): JavacDiagnostic[] {
   const lines = output.split("\n");
   const byKey = new Map<string, JavacDiagnostic>();
@@ -61,11 +56,7 @@ function identifiersIn(change: ApiChange): string[] {
     .filter((id): id is string => Boolean(id));
 }
 
-/**
- * javac's "cannot find symbol" names the missing JavaBean accessor method (e.g.
- * "getTotalPrice"), not the raw field name oasdiff quotes ("totalPrice") - a removed/renamed
- * property almost always breaks as a missing get/set/is method, not a missing bare field.
- */
+/** javac's "cannot find symbol" names the missing JavaBean accessor ("getTotalPrice"), not the raw field oasdiff quotes ("totalPrice"). */
 function javaAccessorVariants(id: string): string[] {
   const capitalized = id.charAt(0).toUpperCase() + id.slice(1);
   return [id, `get${capitalized}`, `set${capitalized}`, `is${capitalized}`];
@@ -84,15 +75,7 @@ function matchChange(
   );
 }
 
-/**
- * Locates code affected by a schema change (SPEC §2 step 4). Runs `mvn test-compile` - not just
- * `compile` - so a schema change that breaks a test fixture is caught too, the same project-wide
- * reach TypeScript's ts-morph scan already has. Unlike ts-morph, Maven's lifecycle means a main-
- * code failure stops before test-compile even runs, so this single call can still miss a
- * test-only error that only becomes visible once the main code is fixed - that gap is closed by
- * agent-tools.ts re-running this same function from run_build, not by anything here (see
- * DECISIONS.md).
- */
+/** Locates code affected by a schema change (SPEC §2 step 4) via `mvn test-compile`, not just `compile`, so a broken test fixture is caught too - though a main-code failure still hides a test-only error until agent-tools.ts re-runs this from run_build (see DECISIONS.md). */
 export async function findAffected(
   ctx: AdapterContext,
   _api: ApiEntry,

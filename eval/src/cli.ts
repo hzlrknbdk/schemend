@@ -50,13 +50,7 @@ interface ReadyConsumer {
   consumerExec: ConsumerDockerExec;
 }
 
-/**
- * Picks each consumer's LanguageAdapter and Docker context (see docker.ts); never falls back to
- * a plain host exec - if Docker itself is unreachable, this throws and the scenario is reported
- * as "error" by main()'s own try/catch, same as any other scenario-level failure. `repoRoot` is
- * the scenario's worktree root (mounted read-only alongside `dir`, read-write, so a sibling
- * schema reference resolves - see ensureDockerCtx, check.ts).
- */
+/** Picks each consumer's LanguageAdapter and Docker context (see docker.ts); never falls back to a plain host exec - an unreachable Docker throws, reported as "error" by main()'s try/catch. */
 export type CreateConsumerExec = (
   dir: string,
   repoRoot: string,

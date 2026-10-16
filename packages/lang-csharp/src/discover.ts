@@ -27,12 +27,7 @@ async function listFiles(dir: string): Promise<string[]> {
 const ENV_API_URL_RE =
   /Environment\.GetEnvironmentVariable\(\s*"([A-Z0-9_]+_API_URL)"\s*\)/g;
 
-/**
- * Finds APIs a C# project calls (SPEC §2 step 1): an NSwag openapi2csclient Exec target gives the
- * API name and schema location; `.cs` files referencing the generated client's namespace give a
- * rough `usedIn` (same "rough hint" caveat as TypeScript/Java's - real impact analysis is
- * findAffected's compiler scan, not this list).
- */
+/** Finds APIs a C# project calls (SPEC §2 step 1): an NSwag Exec target gives name + schema; `.cs` files referencing its namespace give a rough `usedIn` (real impact analysis is findAffected). */
 export async function discoverApis(ctx: AdapterContext): Promise<ApiEntry[]> {
   const target = await resolveBuildTarget(ctx.root);
   const config = requireResolvedNSwagConfig(target.mainProject);
@@ -74,12 +69,7 @@ export async function discoverApis(ctx: AdapterContext): Promise<ApiEntry[]> {
   ];
 }
 
-/**
- * Re-runs just the NSwag openapi2csclient Target that generates `api`'s client (SPEC §2 step 4),
- * via `-t:<targetName>` rather than a full build - the C# equivalent of Maven's dedicated
- * `generate-sources` phase. Verifies the main project's own NSwag config still matches
- * `api.source.location` first, same defensive check as TypeScript/Java's regenerateClient.
- */
+/** Re-runs just the NSwag Target that generates `api`'s client, via `-t:<targetName>` rather than a full build, after verifying the project's NSwag config still matches `api.source.location`. */
 export async function regenerateClient(
   ctx: AdapterContext,
   api: ApiEntry,
@@ -104,12 +94,7 @@ export async function regenerateClient(
   }
 }
 
-/**
- * Validates that the main project's configured schema (inputSpec) is a real local file safely
- * inside `repoRoot` - the boundary ensureDockerCtx actually mounts for install, which (unlike
- * build/test) runs with network access (see DECISIONS.md). A .csproj is repo content, not
- * something to trust blindly when deciding what a networked container can reach.
- */
+/** Validates that the main project's inputSpec is a real local file safely inside `repoRoot`, the boundary install mounts with network access (see DECISIONS.md). */
 export async function assertDockerVisibility(
   root: string,
   repoRoot: string,

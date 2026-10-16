@@ -78,13 +78,7 @@ function buildPrompt(
   ].join("\n");
 }
 
-/**
- * Pulls the `[[schemend:summary]]{...}` trailer `formatCheck` (agent-tools.ts) appends to a
- * failed run_build/run_tests result. The actual language-specific parsing (tsc's `error TS1234`,
- * javac's `[ERROR] file:[line,col]`, MSBuild's `error CS1234`, ...) already happened per-adapter
- * before this text was built - this only ever reads schemend's own wrapper format, never a
- * compiler's, which is why one regex here covers every language.
- */
+/** Pulls the `[[schemend:summary]]{...}` trailer `formatCheck` (agent-tools.ts) appends to a failed result - reads schemend's own wrapper, never a compiler's format, so one regex covers every language. */
 function parseSummaryTag(text: string): Record<string, unknown> {
   const match = text.match(/\[\[schemend:summary\]\](.*)$/m);
   if (!match?.[1]) return {};
@@ -96,11 +90,7 @@ function parseSummaryTag(text: string): Record<string, unknown> {
   }
 }
 
-/**
- * `formatCheck` always starts a result with "<name>: passed" (one line, nothing else) or
- * "<name>: failed" (followed by detail) - schemend's own fixed wrapper, the same for every
- * language, so checking the first line's ending is enough; no per-adapter knowledge needed.
- */
+/** `formatCheck` always starts with "<name>: passed" or "<name>: failed" - checking the first line's ending is enough, no per-adapter knowledge needed. */
 function parseCheckStatus(text: string): "passed" | "failed" | undefined {
   const firstLine = text.split("\n", 1)[0] ?? "";
   if (firstLine.endsWith(": passed")) return "passed";
@@ -118,28 +108,16 @@ function extractPath(input: unknown): string | undefined {
 }
 
 /**
- * Fix + Verify (SPEC §2 steps 5-6). Assumes the caller already ran the real pre-change baseline
- * (step 3) and the client regeneration + impact scan (step 4): by the time this runs, the
- * generated client already reflects the NEW schema, so re-checking build/test here would just
- * re-observe the breakage `affected` already describes, not a pre-existing problem - that check
- * belongs before regeneration, not here. Runs a bash-free Claude Agent SDK loop restricted to
- * read_file/edit_file/run_build/run_tests (SPEC §6), bounded by the remaining budget via the
- * SDK's own `maxBudgetUsd`. "Retry within budget" (SPEC step 6) isn't separate code here: run_build
- * and run_tests are tools the agent itself calls, so it already iterates on failures on its own.
- * Confidence and the final checks come from our own build/test run after the loop ends, not the
- * agent's self-reported tool calls - a real check is still the actual proof a fix is complete.
+ * Fix + Verify (SPEC §2 steps 5-6). Assumes the caller already ran baseline (step 3) and
+ * regeneration + impact (step 4). A bash-free Claude Agent SDK loop restricted to
+ * read_file/edit_file/run_build/run_tests (SPEC §6), bounded by `maxBudgetUsd`; "retry within
+ * budget" is the agent calling run_build/run_tests itself, not separate code. Confidence and the
+ * final checks come from our own build/test after the loop, not the agent's self-reports.
  *
- * Emits step-started/step-finished for its two steps ("fix": the agent loop, "verify": the final
- * build/test), agent-tool-call/agent-tool-result parsed from the SDK's own message stream
- * (tool_use blocks on assistant messages, tool_result blocks on the following user message,
- * correlated by the model's tool_use id), check-result for the final build/test, and cost-updated
- * once the SDK reports a real total_cost_usd - there's no cheaper, non-fabricated cost signal
- * available mid-loop (see DECISIONS.md: no hand-maintained pricing table).
- *
- * `abortController`, when aborted (SPEC §9's "q" shortcut), stops the SDK's query() loop; the
- * resulting AbortError is treated as a clean stop (review notes "cancelled", confidence
- * "unverified"), not a crash, and the final build/test ("verify") is skipped entirely - a
- * cancelled run shouldn't keep running more commands after the user asked it to stop.
+ * Emits step-started/-finished ("fix", "verify"), agent-tool-call/-result (parsed from the SDK's
+ * message stream, see DECISIONS.md), check-result, and cost-updated once the SDK reports a real
+ * total_cost_usd. An aborted `abortController` is a clean stop (confidence "unverified"), not a
+ * crash - the final "verify" build/test is skipped entirely.
  */
 export async function runFixAgent(
   input: FixAgentInput,

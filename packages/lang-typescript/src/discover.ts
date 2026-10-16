@@ -107,13 +107,7 @@ function buildEntry(
   };
 }
 
-/**
- * Finds APIs a TypeScript project calls (SPEC §2 step 1): an openapi-typescript generate script
- * in package.json gives the API name and schema location; source files importing the generated
- * client give a rough `usedIn` (SPEC §4 note: real impact analysis is findAffected's typecheck
- * scan, not this list). Env var references (e.g. ORDERS_API_URL) are recorded as extra evidence
- * only, for `schemend init`'s discovery confirmation.
- */
+/** Finds APIs a TypeScript project calls (SPEC §2 step 1): a generate script gives name + schema; source files importing the client give a rough `usedIn` (real impact analysis is findAffected). */
 export async function discoverApis(ctx: AdapterContext): Promise<ApiEntry[]> {
   const scripts = await readPackageScripts(ctx.root);
   const clients = findGeneratedClients(scripts);

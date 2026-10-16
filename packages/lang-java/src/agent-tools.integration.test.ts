@@ -28,13 +28,9 @@ function realExec(command: string): Promise<ExecResult> {
   });
 }
 
-// In production, findAffected/build run through ensureDockerCtx's broad mount (the whole repo at
-// /workspace, the consumer at a subpath - see check.ts), which javac paths need
-// resolveContainerPath to map back to a host path (ctx.repoRoot). This test skips that generic
-// machinery and mounts at the SAME absolute path on both sides instead, so javac's reported paths
-// already equal ctx.root exactly with no translation needed (no ctx.repoRoot is set here, so
-// resolveContainerPath is a no-op anyway) - simpler for testing buildAgentTools' dynamic allowlist
-// behavior in isolation, since Docker here only stands in for a local Maven this machine lacks.
+// Unlike production's broad ensureDockerCtx mount, this mounts at the same absolute path on both
+// sides, so javac's paths already equal ctx.root with no resolveContainerPath translation needed
+// - simpler for testing buildAgentTools' allowlist in isolation.
 function dockerExec(command: string): Promise<ExecResult> {
   return realExec(
     `docker run --rm -v ${root}:${root} -v ${process.env.HOME}/.m2:/root/.m2 ` +

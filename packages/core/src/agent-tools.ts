@@ -16,11 +16,7 @@ import {
 import type { LanguageAdapter } from "./language-adapter.js";
 import type { ApiChange, ApiEntry, CheckResult } from "./types.js";
 
-/**
- * True if `relPath`, resolved against `root`, never escapes it (no `../` traversal, not
- * absolute) - a defensive check on paths `findAffected` hands back, since a buggy adapter
- * returning something outside the consumer's own directory should never get silently allowed.
- */
+/** True if `relPath`, resolved against `root`, never escapes it - defends against a buggy adapter's findAffected returning a path outside the consumer's directory. */
 function isWithinRoot(root: string, relPath: string): boolean {
   if (path.isAbsolute(relPath)) return false;
   const rel = path.relative(root, path.resolve(root, relPath));
@@ -65,14 +61,7 @@ function computeDiff(
   return { added, removed, diff: createPatch(file, before, after) };
 }
 
-/**
- * `summary` and `newlyAllowedFiles` are both encoded as a trailing, schemend-authored
- * `[[schemend:...]]` line - never a language-specific pattern, since core's own
- * agent.ts re-parses this exact tag (not the compiler's own error format) to populate the
- * agent-tool-result event. `newlyAllowedFiles` is also spelled out in plain language right above
- * it, since that part is for the model, not just the event system: without it, the model has no
- * way to know `allowed` just grew beyond the files it was originally told about.
- */
+/** `summary` is encoded as a trailing `[[schemend:summary]]` line agent.ts re-parses. `newlyAllowedFiles` is also spelled out in plain language above it - that part is for the model, so it knows `allowed` just grew. */
 function formatCheck(
   result: CheckResult,
   summary: Record<string, unknown>,
@@ -100,24 +89,16 @@ export interface AgentTools {
 
 /**
  * Builds the four tools the fix agent is allowed to use (SPEC §6): read_file/edit_file operate
- * only within ctx.root, and edit_file refuses any path outside `allowed` (SPEC §2 step 5: "agent
- * edits only affected files"). run_build/run_tests call straight through to the adapter, which
- * routes execution through ctx.exec (Docker-vs-local stays in core, per AdapterContext).
+ * only within ctx.root, and edit_file refuses any path outside `allowed` (SPEC §2 step 5).
  *
- * `allowed` grows during the session: a Maven/dotnet-style two-phase build (compile, then
- * test-compile) can't surface a test file's compiler error until the main code compiles clean,
- * so the first findAffected call (before any fix) can miss it entirely - unlike TypeScript's
- * ts-morph, which diagnoses the whole project (main + test) in one pass regardless of phase. When
- * run_build reports a failure, this re-runs the adapter's own findAffected and adds any
- * newly-reported file not already allowed (and within ctx.root - see isWithinRoot), so a file
- * that was compiler-invisible at the start becomes editable the moment a real compiler error
- * names it. Language-independent: core never parses a compiler's own output itself, it just
- * calls the adapter's findAffected again.
+ * `allowed` grows during the session: a Maven/dotnet-style two-phase build can't surface a test
+ * file's error until the main code compiles, so the first findAffected call can miss it entirely
+ * (TypeScript's ts-morph diagnoses everything in one pass, so this is a no-op there). On a
+ * run_build failure, this re-runs findAffected and adds any newly-reported, in-root file.
  *
- * `onEvent`, when given, lets edit_file emit a file-edited event with the actual diff - the only
- * place that has both the old and new file content in hand. The agent-tool-call/-result events
- * for all four tools come from parsing the SDK's own message stream instead (runFixAgent), since
- * that's the only place that sees the model's tool_use id.
+ * `onEvent`, when given, lets edit_file emit a file-edited event with the diff - the only place
+ * with both old and new content. agent-tool-call/-result for all four tools instead come from
+ * parsing the SDK's own message stream (runFixAgent), the only place that sees the tool_use id.
  */
 export function buildAgentTools(
   ctx: AdapterContext,

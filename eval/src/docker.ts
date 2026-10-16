@@ -8,13 +8,7 @@ export interface ConsumerDockerExec {
   cleanup: () => Promise<void>;
 }
 
-/**
- * Builds a Docker-backed exec for one consumer directory, picking its LanguageAdapter the same
- * way `schemend check` does (pickAdapter, detect(root) tried in order) and reusing
- * ensureDockerCtx's image/volume/install setup verbatim. Never falls back to a plain host exec:
- * if Docker itself is unreachable, the underlying docker command throws and that propagates as-is
- * - callers in production must not catch it and silently retry on the host.
- */
+/** Builds a Docker-backed exec for one consumer, picking its LanguageAdapter the same way `schemend check` does and reusing ensureDockerCtx verbatim. Never falls back to a plain host exec. */
 export function createConsumerExecFactory(
   adapters: LanguageAdapter[],
   hostExec: Exec,

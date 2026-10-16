@@ -17,12 +17,7 @@ export class NotAGitRepositoryError extends Error {
   }
 }
 
-/**
- * The repo root ensureDockerCtx (check.ts) mounts read-only for build/test/install, so a
- * consumer's schema reference outside its own directory (e.g. SPEC §5's "../orders/openapi.json")
- * still resolves. Relies on the same implicit-cwd convention as writeFileAtRef: `exec` is assumed
- * already scoped to the consumer root (the CLI's own process cwd - see packages/cli/src/index.ts).
- */
+/** The repo root ensureDockerCtx mounts read-only, so a sibling schema reference (SPEC §5) still resolves. `exec` is assumed already scoped to the consumer root, same convention as writeFileAtRef. */
 export async function findRepoRoot(exec: Exec): Promise<string> {
   const result = await exec("git rev-parse --show-toplevel");
   if (result.exitCode !== 0) {
@@ -31,13 +26,7 @@ export async function findRepoRoot(exec: Exec): Promise<string> {
   return result.stdout.trim();
 }
 
-/**
- * Writes `relPath` (relative to the current directory) as it existed at `ref` into a throwaway
- * temp file and returns its path. Used to get the "old" side of a schema diff (SPEC §2 step 2)
- * when the "new" side is simply the file's current content on disk; the caller removes the temp
- * dir when done. `:./` makes the path relative to the current directory rather than the repo
- * root, so this works the same whether the consumer is the whole repo or a subdirectory of it.
- */
+/** Writes `relPath` as it existed at `ref` into a throwaway temp file for the "old" side of a schema diff (SPEC §2 step 2); the caller removes the temp dir. `:./` keeps the path relative to cwd, not the repo root. */
 export async function writeFileAtRef(
   ref: string,
   relPath: string,

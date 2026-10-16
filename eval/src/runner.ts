@@ -106,12 +106,7 @@ async function findRemainingMatches(
   return [...found];
 }
 
-/**
- * `consumerExecs` is how checks actually run (Docker-backed in production, see cli.ts); a
- * consumer missing from it falls back to a plain host exec scoped to its own directory - a
- * convenience for unit tests that don't care about Docker, never exercised by the real
- * `pnpm eval` entry point, which always supplies one exec per consumer.
- */
+/** `consumerExecs` is how checks actually run (Docker-backed in production, see cli.ts); a consumer missing from it falls back to a plain host exec - a test convenience, never used by real `pnpm eval`. */
 export async function runScenario(
   scenario: Scenario,
   consumerDirs: Record<string, string>,

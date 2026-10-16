@@ -43,11 +43,7 @@ interface PomProject {
   build?: { plugins?: { plugin?: PomPlugin | PomPlugin[] } };
 }
 
-/**
- * project.basedir resolves to "." (not an absolute path): the only thing this adapter needs out
- * of a resolved value is a clean, schemend-relative path/package string, the same shape every
- * other ApiEntry.source.location already has (e.g. checkout-web's "../../services/orders/openapi.json").
- */
+/** project.basedir resolves to "." (not an absolute path) - the only shape this adapter needs out of it, same as every other ApiEntry.source.location. */
 const BUILTIN_PROPERTIES: Record<string, string> = { "project.basedir": "." };
 
 function readProperties(project: PomProject): Record<string, string> {
@@ -64,14 +60,7 @@ function readProperties(project: PomProject): Record<string, string> {
   return result;
 }
 
-/**
- * Maven resolves a pom.xml value's `${...}` tokens against <properties> (and a handful of
- * built-ins) before any plugin ever sees it - services/invoice's real pom.xml writes
- * `<inputSpec>${orders.openapi.spec}</inputSpec>`, never a literal path, so skipping this step
- * would make inputSpec/apiPackage useless garbage against every real Maven project. Iterates a
- * few times since one property's own value can reference another (orders.openapi.spec itself
- * contains ${project.basedir}).
- */
+/** Resolves a pom.xml value's `${...}` tokens against <properties> - real poms write `<inputSpec>${orders.openapi.spec}</inputSpec>`, never a literal path. Iterates since one property can reference another. */
 function resolveMavenProperties(
   value: string,
   properties: Record<string, string>,
@@ -101,12 +90,7 @@ interface OpenApiGeneratorConfig {
   apiPackage?: string;
 }
 
-/**
- * Only looks at <build><plugins> directly on the project's own pom.xml - <pluginManagement>
- * (just declares defaults, doesn't activate the plugin) and <profiles> (only active under a
- * specific Maven profile) aren't recognized (see DECISIONS.md, v1.1 note), the same
- * simplicity-first scope as TypeScript's single recognized openapi-typescript script pattern.
- */
+/** Only looks at <build><plugins> directly on the pom.xml - <pluginManagement>/<profiles> aren't recognized (v1.1 note, see DECISIONS.md). */
 function findOpenApiGeneratorConfig(
   project: PomProject,
 ): OpenApiGeneratorConfig | undefined {
@@ -135,14 +119,7 @@ function findOpenApiGeneratorConfig(
   return undefined;
 }
 
-/**
- * Throws if this project's pom.xml declares a <parent> that resolves to a local file (via
- * relativePath, default "../pom.xml") whose own groupId/artifactId/version matches - a genuine
- * Maven multi-module reactor relationship, which schemend v1 doesn't support (SPEC §4). An
- * explicit, empty <relativePath/> (e.g. a published parent like spring-boot-starter-parent, see
- * services/invoice/pom.xml) means "resolve from the repository, never locally" and is never
- * treated as a reactor relationship, even if a same-named local directory happens to exist.
- */
+/** Throws if pom.xml's <parent> resolves to a local file with a matching groupId/artifactId/version - a real Maven reactor relationship, unsupported in v1 (SPEC §4). An explicit empty <relativePath/> (e.g. spring-boot-starter-parent) always means "resolve from the repository", never a reactor. */
 export async function assertNotMultiModule(root: string): Promise<void> {
   const project = await readPom(path.join(root, "pom.xml"));
   const parent = project?.parent;
@@ -172,14 +149,7 @@ export async function assertNotMultiModule(root: string): Promise<void> {
 // own path.normalize(), which collapses "https://host" down to "https:/host".
 const URL_SCHEME_RE = /^[a-z][a-z0-9+.-]*:\//i;
 
-/**
- * Validates that the pom.xml's configured schema (inputSpec) is a real local file safely inside
- * `repoRoot` - the boundary ensureDockerCtx (check.ts) actually mounts for install, which (unlike
- * build/test) runs with network access (see DECISIONS.md). A pom.xml is repo content, not
- * something to trust blindly when deciding what a networked container can reach: an inputSpec
- * that's a URL, missing, or resolves (after following symlinks, via realpath) outside `repoRoot`
- * is refused with a clear error instead of being silently mounted or silently skipped.
- */
+/** Validates that pom.xml's inputSpec is a real local file safely inside `repoRoot`, the boundary install (unlike build/test) mounts with network access. A URL, missing file, or symlink escape is refused with a clear error. */
 export async function assertDockerVisibility(
   root: string,
   repoRoot: string,
@@ -257,12 +227,7 @@ function isApplicationConfigFile(fileName: string): boolean {
   return /^application(-\w+)?\.(ya?ml|properties)$/.test(fileName);
 }
 
-/**
- * The actual ORDERS_API_URL-style reference usually lives in application.yml/.properties
- * (Spring property placeholders), not in a .java file directly - see services/invoice's
- * OrdersClientConfig, which reads `${orders.api.url}` from config rather than calling
- * System.getenv itself.
- */
+/** The ORDERS_API_URL-style reference usually lives in application.yml/.properties (Spring placeholders), not a .java file calling System.getenv directly. */
 function collectEvidence(
   apiNameUpper: string,
   relFile: string,
@@ -280,12 +245,7 @@ function collectEvidence(
   return evidence;
 }
 
-/**
- * Finds APIs a Java project calls (SPEC §2 step 1): an openapi-generator-maven-plugin execution
- * in pom.xml gives the API name and schema location; `.java` files importing the generated
- * client's apiPackage give a rough `usedIn` (same "rough hint" caveat as TypeScript's - real
- * impact analysis is findAffected's compiler scan, not this list).
- */
+/** Finds APIs a Java project calls (SPEC §2 step 1): pom.xml's generator execution gives name + schema; `.java` files importing its apiPackage give a rough `usedIn` (real impact analysis is findAffected). */
 export async function discoverApis(ctx: AdapterContext): Promise<ApiEntry[]> {
   await assertNotMultiModule(ctx.root);
 
@@ -327,12 +287,7 @@ export async function discoverApis(ctx: AdapterContext): Promise<ApiEntry[]> {
   ];
 }
 
-/**
- * Re-runs the openapi-generator-maven-plugin execution that generates `api`'s client (SPEC §2
- * step 4). Verifies the pom.xml's own inputSpec still matches `api.source.location` first - same
- * defensive check as TypeScript's regenerateClient, even though v1's Java adapter only ever
- * recognizes a single execution per project.
- */
+/** Re-runs the generator execution that produces `api`'s client (SPEC §2 step 4), after verifying pom.xml's inputSpec still matches `api.source.location`. */
 export async function regenerateClient(
   ctx: AdapterContext,
   api: ApiEntry,

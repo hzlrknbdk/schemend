@@ -25,10 +25,8 @@ const DOCKERFILE = path.resolve(
   "../docker/Dockerfile",
 );
 
-// Tags the image with the Dockerfile's own content hash, not just the maven/JDK versions it
-// names: ensureDockerImage only rebuilds when the tag is unknown, so a Dockerfile edit with no
-// version bump would otherwise keep reusing the stale cached image forever (same reasoning as
-// the TypeScript adapter's image tag).
+// Tagged with the Dockerfile's own content hash, not just version numbers - ensureDockerImage
+// only rebuilds when the tag is unknown, so an edit with no version bump needs a new tag too.
 const DOCKERFILE_HASH = createHash("sha256")
   .update(readFileSync(DOCKERFILE))
   .digest("hex")

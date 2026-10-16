@@ -50,16 +50,10 @@ function parse<T>(schema: z.ZodType<T>, body: unknown, path: string): T {
 }
 
 /**
- * Backs the "local" build: reads from `schemend ui`'s local server, embedded in
- * @schemend/cli. The server itself doesn't exist yet (v1.1) — this is the client side of
- * that contract, written against the endpoints it will expose (see
- * docs/local-server-contract.md). Responses are parsed through schemas.ts, not trusted as
- * `response.json()`'s `any` — a malformed/outdated server response throws a ValidationError
- * instead of silently flowing on as a wrongly-typed value. Every failure mode throws one of
- * errors.ts's RepositoryError subclasses, never a plain Error, so a route's errorComponent can
- * always normalize and pick a message by `kind`. The access token (see auth-token.ts) is read
- * from the URL fragment once, on construction, kept in memory only, and sent as a Bearer token
- * on every request — never persisted, never put back in the URL.
+ * Backs the "local" build: reads from `schemend ui`'s local server (doesn't exist yet, v1.1 -
+ * written against docs/local-server-contract.md). Responses are parsed through schemas.ts, not
+ * trusted as `response.json()`'s `any`; every failure throws an errors.ts RepositoryError
+ * subclass, never a plain Error. The access token (auth-token.ts) is kept in memory only.
  */
 export class HttpRepository implements Repository {
   constructor() {

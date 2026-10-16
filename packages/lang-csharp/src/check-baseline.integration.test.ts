@@ -132,11 +132,9 @@ const ORDER_READER_TESTS_CS = [
 ].join("\n");
 
 beforeEach(async () => {
-  // realpath'd because runCheck re-derives repoRoot via `git rev-parse --show-toplevel`, which
-  // always returns the fully resolved path (POSIX getcwd semantics) - on macOS, mkdtemp's own
-  // result is under the unresolved /var symlink (-> /private/var), which would otherwise mismatch
-  // and send ensureDockerCtx's extraMounts target far outside /workspace. A real `schemend check`
-  // never hits this: process.cwd() is already resolved the same way.
+  // realpath'd because runCheck re-derives repoRoot via `git rev-parse --show-toplevel`
+  // (fully resolved) - on macOS, mkdtemp's result sits under the unresolved /var symlink,
+  // which would otherwise mismatch and misdirect ensureDockerCtx's mount.
   repoRoot = await realpath(
     await mkdtemp(path.join(tmpdir(), "schemend-lang-csharp-check-baseline-")),
   );
@@ -200,13 +198,9 @@ function baseConfig(): Config {
   };
 }
 
-// Regression test for the bug the eval runner's own two-phase baseline (old ref first, only
-// then schemaAfter) hid: runCheck's baseline, as it builds/tests, must see the schema as it
-// stood BEFORE this change, not whatever's live on disk at HEAD - otherwise, for an adapter
-// whose build always regenerates its client fresh (NSwag here, just as true for Java/Maven),
-// baseline would see the new, breaking schema immediately and report "baseline failed" before
-// ever trying to fix anything, in exactly the single-commit-schema-change shape a real CI
-// trigger produces.
+// Regression test: runCheck's baseline must see the schema as it stood BEFORE this change, not
+// whatever's live on disk at HEAD - otherwise an adapter that always regenerates its client
+// fresh (NSwag, like Java/Maven) sees the breaking schema immediately (see DECISIONS.md).
 describe.runIf(await dockerAvailable())(
   "runCheck baseline + real csharpAdapter (single-phase schema change already at HEAD)",
   () => {

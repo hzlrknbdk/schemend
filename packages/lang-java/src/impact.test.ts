@@ -16,11 +16,8 @@ async function write(relPath: string, content: string): Promise<void> {
   await writeFile(full, content);
 }
 
-// Both fixtures were captured from a real `mvn -q -B test-compile` run, with the container's
-// /workspace (ensureDockerCtx mounts the whole repo there, the consumer at /workspace/services/
-// invoice - see docker-exec.ts) kept literally in the fixture text; findAffected's own
-// resolveContainerPath call is what maps that back to repoRoot, so the fixture needs no
-// substitution here.
+// Both fixtures keep the container's /workspace path literally in the text; findAffected's own
+// resolveContainerPath maps that back to repoRoot, so no substitution is needed here.
 async function readFixture(name: string): Promise<string> {
   return readFile(path.join(FIXTURES_DIR, name), "utf-8");
 }

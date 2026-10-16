@@ -1,9 +1,7 @@
 import type { AdapterContext, CheckResult } from "@schemend/core";
 
-// Picking stderr over stdout whenever it's non-empty risks hiding real output on the other
-// stream behind an unrelated message on this one (found to actually happen for dotnet, see
-// lang-csharp's checks.ts) - combining both is the safer default regardless of which stream a
-// given tool happens to use for its real errors.
+// Picking stderr over stdout whenever non-empty risks hiding real output behind an unrelated
+// message on the other stream (found to happen for dotnet, see lang-csharp's checks.ts).
 const MAX_DETAIL_LENGTH = 4000;
 
 function truncate(text: string): string {
@@ -39,10 +37,9 @@ export async function test(ctx: AdapterContext): Promise<CheckResult> {
   return toCheckResult("test", result.exitCode, result.stdout, result.stderr);
 }
 
-// `[ERROR] <path>.java:[line,col] <message>` - javac's own diagnostic line (same shape
-// impact.ts's ERROR_LINE_RE parses), captured from a real `mvn -q test-compile` run. A removed/
-// renamed field's error repeats once in the mid-build banner and once in the end-of-build
-// summary, so distinct file:line pairs (not raw line count) is the error count.
+// javac's `[ERROR] <path>.java:[line,col] <message>` (same shape impact.ts's ERROR_LINE_RE
+// parses) repeats once mid-build and once in the summary, so distinct file:line pairs - not
+// raw line count - is the error count.
 const BUILD_ERROR_LINE_RE = /^\[ERROR\] (.+\.java):(\[\d+,\d+\]) (.*)$/;
 
 export function summarizeBuildFailure(result: CheckResult): {
@@ -68,10 +65,8 @@ export function summarizeBuildFailure(result: CheckResult): {
   };
 }
 
-// Maven surefire's end-of-run aggregate line ("Tests run: 3, Failures: 1, Errors: 0, Skipped: 0",
-// no trailing "Time elapsed" - that suffix only appears on the earlier, per-test-class line) and
-// its "[ERROR]   <Class>.<method>:<line>" failure marker - captured from a real `mvn -q -B test`
-// run against a deliberately broken assertion.
+// Surefire's end-of-run aggregate line ("Tests run: 3, Failures: 1, ...", no trailing "Time
+// elapsed" - that's only on the per-test-class line) and its failure marker.
 const TEST_SUMMARY_RE =
   /Tests run: (\d+), Failures: (\d+), Errors: (\d+), Skipped: (\d+)$/gm;
 const TEST_FAILURE_LINE_RE = /^\[ERROR\]\s+(\S+:\d+)\s*$/m;

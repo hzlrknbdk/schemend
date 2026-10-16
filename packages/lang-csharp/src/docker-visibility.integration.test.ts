@@ -58,10 +58,8 @@ const SCHEMA_BEFORE = path.resolve(
 );
 
 let repoRoot: string;
-// Two directories above the consumer root (apps/consumer), same depth as lang-java's equivalent
-// test, PLUS one more nesting level inside the consumer for the .csproj itself
-// (src/Consumer/Consumer.csproj) - C#'s own src/+tests/ layout. Proves the root-relative
-// inputSpec conversion handles both hops, not just notification's own coincidental depth.
+// Two directories above the consumer, same as lang-java's equivalent test, plus one more
+// nesting level inside it for the .csproj itself (C#'s src/+tests/ layout).
 let consumerRoot: string;
 
 async function write(relPath: string, content: string): Promise<void> {
@@ -199,13 +197,8 @@ describe.runIf(await dockerAvailable())(
         consumerRoot,
         "src/Consumer/obj/Generated/OrdersClient.cs",
       );
-      // Proves the distinction the task set out to verify: `dotnet restore` (install) evaluates
-      // the project and runs the Restore target graph, never the Build target graph the
-      // BeforeTargets="BeforeBuild" NSwag target hooks into - only a real `dotnet build` should
-      // ever produce this file. A successful build below is also the proof that the NSwag CLI
-      // itself (via $(NSwagExe_Net100), bundled by the NSwag.MSBuild package) runs fine inside
-      // the sdk:10.0 image - if it couldn't run there, the build would fail, not just skip
-      // generation.
+      // `dotnet restore` runs the Restore target graph, never the Build graph NSwag's
+      // BeforeTargets="BeforeBuild" hooks into - only a real `dotnet build` produces this file.
       expect(await fileExists(generatedClientPath)).toBe(false);
 
       const buildResult = await csharpAdapter.build(ctx);

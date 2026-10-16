@@ -202,11 +202,8 @@ afterEach(async () => {
   await rm(repoRoot, { recursive: true, force: true });
 });
 
-// Closes a real gap: neither existing Docker integration test (agent-tools/regenerate) exercises
-// ensureDockerCtx/ensureContainerDeps at all - both bypass them with a bespoke docker invocation
-// (a directly-mounted ~/.m2 or an explicit --offline flag), so the actual production combination
-// (dependency:go-offline-replaced install, broad repo-root mount, --network none checks) had
-// never been run for real before this task.
+// Neither existing Docker integration test (agent-tools/regenerate) exercises
+// ensureDockerCtx/ensureContainerDeps - both bypass them with a bespoke docker invocation.
 describe.runIf(await dockerAvailable())(
   "ensureDockerCtx + javaAdapter.build/test (real Docker, real mvn)",
   () => {
@@ -227,13 +224,9 @@ describe.runIf(await dockerAvailable())(
       expect(testResult).toEqual({ name: "test", status: "passed" });
     }, 180_000);
 
-    // installCommand's own `mvn test` can hit the exact same compile error a genuinely broken
-    // baseline would - `-Dmaven.test.failure.ignore=true` only covers a failed test *assertion*,
-    // not this (verified: without `|| true`, this install command alone exits 1 here). Without
-    // `|| true`, ensureContainerDeps would throw and crash runCheck with an "install failed"
-    // error instead of the real baseline-failed path (check.ts: `adapter.build`/`test` after
-    // ensureDockerCtx returns, unaffected by install's own exit code, are what set
-    // StepFailureReason "baseline-failed").
+    // installCommand's second step can hit the same compile error a genuinely broken baseline
+    // would; `|| true` there keeps ensureContainerDeps from throwing, leaving adapter.build right
+    // after to report the real "baseline-failed" path (see DECISIONS.md).
     it("doesn't throw from ensureDockerCtx when the baseline itself doesn't compile - adapter.build reports the failure instead of install crashing", async () => {
       await write(
         "apps/consumer/src/main/java/com/example/OrderReader.java",

@@ -75,22 +75,12 @@ async function listCsprojFiles(dir: string): Promise<string[]> {
   return files;
 }
 
-/**
- * project.basedir-equivalent built-ins MSBuild resolves even with no local <PropertyGroup> entry.
- * Only the ones schemend's own fixtures actually exercise - a real, unrecognized built-in is left
- * as an unresolved $(...) token (see NSwagConfig.unresolvedInputSpec) rather than guessed at.
- */
+/** MSBuild built-ins resolved even with no local <PropertyGroup> entry - only the ones schemend's fixtures exercise; an unrecognized one is left unresolved (see NSwagConfig.unresolvedInputSpec). */
 const MSBUILD_BUILTIN_PROPERTIES: Record<string, string> = {
   MSBuildProjectDirectory: ".",
 };
 
-/**
- * Resolves a .csproj's own `$(Prop)` tokens against its directly-declared <PropertyGroup>
- * entries (merged across every PropertyGroup in the file, ignoring any Condition attribute - v1
- * simplicity-first scope, same spirit as Java's pluginManagement/profiles limitation). Iterates a
- * few passes since one property's value can reference another. A token with no matching property
- * is left as-is, never guessed at (see NSwagConfig.unresolvedInputSpec).
- */
+/** Resolves `$(Prop)` tokens against every <PropertyGroup> in the file (ignoring Condition - v1 simplicity scope). Iterates a few passes; an unmatched token is left as-is, never guessed at. */
 function resolveMsBuildProperties(
   value: string,
   properties: Record<string, string>,
@@ -139,12 +129,7 @@ async function readCsproj(csprojPath: string): Promise<RawProject | undefined> {
   return parsed.Project;
 }
 
-/**
- * Finds the `<Target ...><Exec Command="... openapi2csclient ...">` NSwag uses to generate a
- * client (see services/notification/.../Notification.csproj) - only the first Exec containing
- * "openapi2csclient" in any Target is recognized, the C# equivalent of Java's "only a single
- * <build><plugins> execution" scope limit.
- */
+/** Finds the `<Target><Exec Command="... openapi2csclient ...">` NSwag uses to generate a client - only the first such Exec in any Target is recognized (C#'s equivalent of Java's single-execution scope limit). */
 function findNSwagConfig(
   project: RawProject,
   root: string,
@@ -162,10 +147,8 @@ function findNSwagConfig(
 
       const resolvedInput = resolveMsBuildProperties(rawInput, properties);
       const unresolvedInputSpec = resolvedInput.includes("$(");
-      // A URL is kept as-is, never joined with projectDir/re-relativized against root - doing
-      // so would mangle it into a path-like string (e.g. "src/Notification/https:/host/...")
-      // that no longer reads as a URL, which is exactly the thing the URL check downstream
-      // (assertDockerVisibility) needs to still recognize.
+      // A URL is kept as-is, never joined/re-relativized against root - that would mangle it
+      // into something like "src/Notification/https:/host/..." that no longer reads as a URL.
       const inputSpec = URL_SCHEME_RE.test(resolvedInput)
         ? resolvedInput
         : path.normalize(
@@ -240,13 +223,7 @@ export interface BuildTarget {
   mainProject: CsProjectInfo;
 }
 
-/**
- * Picks the single NSwag-bearing project (this consumer's API client) and the right target to
- * build/test/restore against (SPEC §4's "single, standalone package" assumption, C#'s own shape
- * of it - see DECISIONS.md). Throws rather than guessing when either choice is ambiguous: more
- * than one NSwag-bearing project, or - with no .sln/.slnx to disambiguate - more than one test
- * project.
- */
+/** Picks the single NSwag-bearing project and the right build/test/restore target (SPEC §4, see DECISIONS.md). Throws rather than guessing on ambiguity (multiple NSwag or, with no .sln, multiple test projects). */
 export async function resolveBuildTarget(root: string): Promise<BuildTarget> {
   const projects = await findCsProjects(root);
   const mainCandidates = projects.filter((p) => p.nswag !== undefined);
