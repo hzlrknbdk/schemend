@@ -328,7 +328,10 @@ export async function ensureContainerDeps(
   const result = await install(options.installCommand);
   if (result.exitCode !== 0) {
     throw new Error(
-      `failed to install dependencies in Docker (${options.installCommand}): ${result.stderr || result.stdout}`,
+      `failed to install dependencies in Docker (${options.installCommand}): ${result.stderr || result.stdout}\n` +
+        `If this looks like a network/registry problem rather than a real project error, the ` +
+        `dependency volume (${options.volume}) may have been left in a bad state by an earlier ` +
+        `interrupted run - delete it and retry: docker volume rm ${options.volume}`,
     );
   }
 }

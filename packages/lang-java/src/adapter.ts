@@ -48,15 +48,12 @@ export const javaAdapter: LanguageAdapter = {
   summarizeTestResult,
   dockerImage: `schemend-lang-java:3.9.9-temurin21-${DOCKERFILE_HASH}`,
   dockerfile: DOCKERFILE,
-  // `dependency:go-offline` alone misses artifacts Maven only resolves once a real goal actually
-  // needs them (surefire's own JUnit provider, some test-scope transitives - verified empirically,
-  // see DECISIONS.md): running the project's real tests once is the only combination proven to
-  // populate everything a later --network none test-compile/test will need. `failure.ignore` only
-  // covers a failed test *assertion*, not a genuine compile error (verified: a broken main class
-  // still exits 1) - `|| true` is what actually guarantees this step can never throw and crash
-  // ensureContainerDeps/runCheck; the real build/test calls right after this (unaffected by it,
-  // same broad mount, --network none) are what determine baseline pass/fail.
-  installCommand: "mvn -q -B test -Dmaven.test.failure.ignore=true || true",
+  // Two steps, not one `|| true`-wrapped command (see DECISIONS.md): go-offline never compiles
+  // anything, so it's left unguarded to throw on a real network failure; the parenthesized `mvn
+  // test || true` still warms surefire's provider and may swallow a genuine compile error (or,
+  // more rarely, a network one) - accepted, see DECISIONS.md.
+  installCommand:
+    "mvn -q -B dependency:go-offline && (mvn -q -B test -Dmaven.test.failure.ignore=true || true)",
   lockfile: "pom.xml",
   workspaceMarkers: [],
   dependencyVolumePath: "/opt/maven-repo",

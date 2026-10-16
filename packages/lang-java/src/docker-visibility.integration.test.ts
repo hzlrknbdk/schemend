@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { ExecResult } from "@schemend/core";
+import type { ExecResult, LanguageAdapter } from "@schemend/core";
 import { dependencyVolumeName, ensureDockerCtx } from "@schemend/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { javaAdapter } from "./adapter.js";
@@ -121,6 +121,18 @@ const POM = `<?xml version="1.0" encoding="UTF-8"?>
     </plugins>
   </build>
 </project>`;
+
+// Mirrors every repository to an unreachable local port - a fast, deterministic stand-in for
+// "the network is down" that avoids timing a real kill or DNS timeout (see DECISIONS.md).
+const BROKEN_SETTINGS = `<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
+  <mirrors>
+    <mirror>
+      <id>broken</id>
+      <url>http://127.0.0.1:1/maven2</url>
+      <mirrorOf>*</mirrorOf>
+    </mirror>
+  </mirrors>
+</settings>`;
 
 beforeEach(async () => {
   repoRoot = await mkdtemp(
@@ -249,6 +261,45 @@ describe.runIf(await dockerAvailable())(
       const buildResult = await javaAdapter.build(ctx);
       expect(buildResult.status).toBe("failed");
       expect(buildResult.detail).toContain("thisMethodDoesNotExist");
+    }, 180_000);
+
+    // go-offline never compiles anything, so it's left unguarded to throw on a real network
+    // failure; the second assertion proves the real worry - an interrupted install doesn't
+    // permanently wedge the volume, a plain retry on the same volume heals it (see DECISIONS.md).
+    it("ensureContainerDeps throws (naming the volume) when the install step can't reach the registry, then a normal retry on the same volume heals", async () => {
+      await write("apps/consumer/broken-settings.xml", BROKEN_SETTINGS);
+      const brokenAdapter: LanguageAdapter = {
+        ...javaAdapter,
+        installCommand:
+          "mvn -q -B -s /workspace/apps/consumer/broken-settings.xml dependency:go-offline",
+      };
+
+      const volume = await dependencyVolumeName(
+        consumerRoot,
+        path.join(consumerRoot, "pom.xml"),
+      );
+
+      await expect(
+        ensureDockerCtx(
+          brokenAdapter,
+          consumerRoot,
+          repoRoot,
+          (command) => realExec(command),
+          undefined,
+          undefined,
+        ),
+      ).rejects.toThrow(new RegExp(`docker volume rm ${volume}`));
+
+      const { ctx } = await ensureDockerCtx(
+        javaAdapter,
+        consumerRoot,
+        repoRoot,
+        (command) => realExec(command),
+        undefined,
+        undefined,
+      );
+      const buildResult = await javaAdapter.build(ctx);
+      expect(buildResult).toEqual({ name: "compile", status: "passed" });
     }, 180_000);
   },
 );

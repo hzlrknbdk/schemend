@@ -246,6 +246,23 @@ describe("ensureContainerDeps", () => {
     ).rejects.toThrow(/failed to install dependencies in Docker/);
   });
 
+  // An interrupted/corrupted volume looks the same as a real registry problem from here - name
+  // the volume and the exact remediation command, since there's no way to tell the two apart
+  // generically (see DECISIONS.md for why this is a message improvement, not a detection one).
+  it("names the volume and suggests deleting it in the failure message", async () => {
+    const exec = vi.fn(async () => failed("network unreachable"));
+    await expect(
+      ensureContainerDeps({
+        exec,
+        root: "/r",
+        image: "img",
+        volume: "schemend-deps-abc123",
+        volumeTarget: "/x",
+        installCommand: "pnpm install",
+      }),
+    ).rejects.toThrow(/docker volume rm schemend-deps-abc123/);
+  });
+
   it("runs as the given user when one is passed", async () => {
     const exec = vi.fn(async (command: string) => ok(command));
     await ensureContainerDeps({
