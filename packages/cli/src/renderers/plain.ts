@@ -109,6 +109,11 @@ export function createPlainRenderer(): Renderer {
             `${event.api}: ${event.affected.length} location(s) affected`,
           );
           return;
+        case "agent-session-started":
+          console.log(
+            `${event.api}: agent session (apiKeySource: ${event.apiKeySource})`,
+          );
+          return;
         case "agent-tool-call":
           console.log(formatToolCall(event));
           return;

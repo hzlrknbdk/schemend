@@ -41,6 +41,30 @@ export class MissingApiKeyError extends Error {
   }
 }
 
+// Only what the spawned `claude` subprocess genuinely needs to run (locate its runtime, find its
+// own config/cache dirs) - not a denylist of known-bad vars, which can't anticipate a future
+// ambient agent session using a different naming scheme. Same isolation reasoning as
+// settingSources: [] below: the host's own CLAUDE_CODE_*/session vars (the ones that let a
+// missing-key run silently fall through to this machine's own claude login, see
+// MissingApiKeyError and DECISIONS.md 2026-10-16) must not reach the subprocess at all, key
+// present or not.
+const SDK_SUBPROCESS_ENV_ALLOWLIST = [
+  "PATH",
+  "HOME",
+  "LANG",
+  "TMPDIR",
+  "SHELL",
+] as const;
+
+function buildAgentEnv(apiKey: string): Record<string, string> {
+  const env: Record<string, string> = { ANTHROPIC_API_KEY: apiKey };
+  for (const name of SDK_SUBPROCESS_ENV_ALLOWLIST) {
+    const value = process.env[name];
+    if (value !== undefined) env[name] = value;
+  }
+  return env;
+}
+
 export interface FixAgentInput {
   ctx: AdapterContext;
   adapter: Pick<LanguageAdapter, "build" | "test" | "findAffected">;
@@ -280,11 +304,7 @@ export async function runFixAgent(
       strictMcpConfig: true,
       permissionMode: "bypassPermissions",
       settingSources: [],
-      // Guarantees the key just validated above is what the spawned subprocess actually uses,
-      // rather than leaving it to implicit process.env inheritance (same isolation reasoning as
-      // settingSources: [] above - this one closes the specific gap SPEC §9's "missing key"
-      // error exists for, see MissingApiKeyError's own doc comment).
-      env: { ...process.env, ANTHROPIC_API_KEY: apiKey },
+      env: buildAgentEnv(apiKey),
       maxBudgetUsd: budget.remaining,
       ...(input.abortController !== undefined
         ? { abortController: input.abortController }
@@ -428,6 +448,12 @@ export async function runFixAgent(
         if (message.subtype === "error_max_budget_usd") {
           review = [{ file: ctx.root, reason: "budget exceeded while fixing" }];
         }
+      } else if (message.type === "system" && message.subtype === "init") {
+        emit({
+          type: "agent-session-started",
+          api,
+          apiKeySource: message.apiKeySource,
+        });
       }
     }
   } catch (error) {

@@ -699,6 +699,64 @@ describe("runFixAgent missing API key", () => {
     const options = mockedQuery.mock.calls[0]?.[0]?.options;
     expect(options?.env?.ANTHROPIC_API_KEY).toBe("sk-ant-real-key");
   });
+
+  it("does not leak an ambient CLAUDE_CODE_* var into the SDK's subprocess env", async () => {
+    process.env.ANTHROPIC_API_KEY = "sk-ant-real-key";
+    process.env.CLAUDE_CODE_SSE_PORT = "12345";
+    mockedQuery.mockImplementation(() => fakeQuery([resultMessage()]));
+
+    try {
+      await runFixAgent({
+        ctx: ctx(),
+        adapter: passingAdapter,
+        apiEntry,
+        affected,
+        changes: [change],
+        budget: new Budget(1),
+        model: "claude-sonnet-5",
+        api: "orders",
+      });
+
+      const options = mockedQuery.mock.calls[0]?.[0]?.options;
+      expect(options?.env).not.toHaveProperty("CLAUDE_CODE_SSE_PORT");
+    } finally {
+      delete process.env.CLAUDE_CODE_SSE_PORT;
+    }
+  });
+
+  it("parses the SDK's system/init message into an agent-session-started event carrying apiKeySource", async () => {
+    mockedQuery.mockImplementation(() =>
+      fakeQuery([
+        {
+          type: "system",
+          subtype: "init",
+          apiKeySource: "ANTHROPIC_API_KEY",
+        },
+        resultMessage(),
+      ]),
+    );
+    const events: CheckEvent[] = [];
+
+    await runFixAgent({
+      ctx: ctx(),
+      adapter: passingAdapter,
+      apiEntry,
+      affected,
+      changes: [change],
+      budget: new Budget(1),
+      model: "claude-sonnet-5",
+      api: "orders",
+      onEvent: (event) => events.push(event),
+    });
+
+    expect(
+      events.find((event) => event.type === "agent-session-started"),
+    ).toMatchObject({
+      type: "agent-session-started",
+      api: "orders",
+      apiKeySource: "ANTHROPIC_API_KEY",
+    });
+  });
 });
 
 describe("runFixAgent flag tool", () => {

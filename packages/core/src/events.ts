@@ -6,7 +6,7 @@ import type {
   ServiceResult,
 } from "./types.js";
 
-export const EVENT_SCHEMA_VERSION = 4;
+export const EVENT_SCHEMA_VERSION = 5;
 
 export type CheckStepName =
   | "detect"
@@ -84,6 +84,20 @@ export type CheckEvent = { timestamp: string } & (
     }
   | { type: "changes-detected"; api: string; changes: ApiChange[] }
   | { type: "affected-found"; api: string; affected: AffectedLocation[] }
+  | {
+      /**
+       * Parsed from the SDK's own `system`/`init` message (first message of the fix agent's
+       * turn) - `apiKeySource` is the SDK's own account-info field naming where the credential
+       * it used actually came from ("ANTHROPIC_API_KEY" is the only supported one; anything else
+       * - "apiKeyHelper", "/login managed key", "none" (e.g. a subscription/OAuth login) - means
+       * the explicit env passed to query() was bypassed). Recorded, not acted on: this product
+       * doesn't support any auth path other than ANTHROPIC_API_KEY, so a renderer/log line is the
+       * right response, not a new failure mode core would have to define.
+       */
+      type: "agent-session-started";
+      api: string;
+      apiKeySource: string;
+    }
   | ({
       type: "agent-tool-call";
       api: string;

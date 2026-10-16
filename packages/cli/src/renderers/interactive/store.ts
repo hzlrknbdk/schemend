@@ -209,6 +209,10 @@ export function reduceEvents(state: UiState, event: CheckEvent): UiState {
       // Already surfaced via the step-finished/agent-tool-result events built from the same
       // data; no panel needs the raw CheckResult on its own today.
       return state;
+    case "agent-session-started":
+      // Recorded in --record-events/--json for auth-source debugging (see events.ts's doc
+      // comment); no panel surfaces it today.
+      return state;
     case "cost-updated":
       return withApi(state, event.api, (apiState) => ({
         ...apiState,
