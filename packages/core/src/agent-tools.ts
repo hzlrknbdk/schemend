@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   createSdkMcpServer,
@@ -14,7 +14,7 @@ import {
   createEventEmitter,
 } from "./events.js";
 import type { LanguageAdapter } from "./language-adapter.js";
-import type { ApiChange, ApiEntry, CheckResult } from "./types.js";
+import type { ApiChange, ApiEntry, CheckResult, ReviewItem } from "./types.js";
 
 /** True if `relPath`, resolved against `root`, never escapes it - defends against a buggy adapter's findAffected returning a path outside the consumer's directory. */
 function isWithinRoot(root: string, relPath: string): boolean {
@@ -31,6 +31,7 @@ export const TOOL_NAMES: readonly AgentToolName[] = [
   "edit_file",
   "run_build",
   "run_tests",
+  "flag",
 ];
 
 export function qualifiedToolName(name: AgentToolName): string {
@@ -85,10 +86,11 @@ export interface AgentTools {
   // biome-ignore lint/suspicious/noExplicitAny: tools have different per-tool zod shapes; this list is for test access only.
   tools: SdkMcpToolDefinition<any>[];
   changedFiles: Set<string>;
+  flags: ReviewItem[];
 }
 
 /**
- * Builds the four tools the fix agent is allowed to use (SPEC §6): read_file/edit_file operate
+ * Builds the five tools the fix agent is allowed to use (SPEC §6): read_file/edit_file operate
  * only within ctx.root, and edit_file refuses any path outside `allowed` (SPEC §2 step 5).
  *
  * `allowed` grows during the session: a Maven/dotnet-style two-phase build can't surface a test
@@ -97,8 +99,12 @@ export interface AgentTools {
  * run_build failure, this re-runs findAffected and adds any newly-reported, in-root file.
  *
  * `onEvent`, when given, lets edit_file emit a file-edited event with the diff - the only place
- * with both old and new content. agent-tool-call/-result for all four tools instead come from
+ * with both old and new content. agent-tool-call/-result for all five tools instead come from
  * parsing the SDK's own message stream (runFixAgent), the only place that sees the tool_use id.
+ *
+ * `flag` is unrelated to `allowed` - it reports a behavioral concern (SPEC §1) rather than editing
+ * anything, so it may name any file under ctx.root, changed or not. Results land in `flags`, which
+ * runFixAgent merges into the returned `review` (deduped) on every exit path, not just this one.
  */
 export function buildAgentTools(
   ctx: AdapterContext,
@@ -117,6 +123,7 @@ export function buildAgentTools(
 ): AgentTools {
   const allowed = new Set(affectedFiles);
   const changedFiles = new Set<string>();
+  const flags: ReviewItem[] = [];
   const emit = createEventEmitter(onEvent);
 
   const readFileTool = tool(
@@ -233,8 +240,73 @@ export function buildAgentTools(
     },
   );
 
-  const tools = [readFileTool, editFileTool, runBuildTool, runTestsTool];
+  const flagTool = tool(
+    "flag",
+    "Report a behavioral concern you can't verify structurally - e.g. a currency or unit " +
+      "assumption tied to a field you edited. Does not block completion; call it as many " +
+      "times as needed, then keep fixing. Does not replace fixing what you can fix.",
+    { file: z.string(), reason: z.string() },
+    async ({ file: relPath, reason }) => {
+      const trimmedReason = reason.trim();
+      if (trimmedReason === "") {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: "refused: reason must not be empty.",
+            },
+          ],
+          isError: true,
+        };
+      }
+      if (!isWithinRoot(ctx.root, relPath)) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `refused: ${relPath} is outside the consumer project.`,
+            },
+          ],
+          isError: true,
+        };
+      }
+      try {
+        await stat(path.join(ctx.root, relPath));
+      } catch {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `refused: ${relPath} does not exist.`,
+            },
+          ],
+          isError: true,
+        };
+      }
+      flags.push({
+        file: relPath,
+        reason: trimmedReason,
+        source: "agent-flag",
+      });
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `flagged ${relPath}: ${trimmedReason}`,
+          },
+        ],
+      };
+    },
+  );
+
+  const tools = [
+    readFileTool,
+    editFileTool,
+    runBuildTool,
+    runTestsTool,
+    flagTool,
+  ];
   const server = createSdkMcpServer({ name: TOOL_SERVER_NAME, tools });
 
-  return { server, tools, changedFiles };
+  return { server, tools, changedFiles, flags };
 }

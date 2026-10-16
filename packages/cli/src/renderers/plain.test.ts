@@ -285,6 +285,39 @@ describe("createPlainRenderer", () => {
     ]);
   });
 
+  it("marks an agent-flagged review item apart from an orchestrator one", () => {
+    const service: ServiceResult = {
+      service: "notification",
+      language: "csharp",
+      branch: "schemend/update",
+      steps: ["detect", "baseline", "regenerate", "impact", "fix", "verify"],
+      changedFiles: ["Program.cs"],
+      checks: [{ name: "test", status: "passed" }],
+      review: [
+        { file: "src/a.ts", reason: "could not verify the fix" },
+        {
+          file: "ReceiptFormatter.cs",
+          reason: "hardcoded TL currency suffix",
+          source: "agent-flag",
+        },
+      ],
+      confidence: "verified-by-tests",
+      costUsd: 0.11,
+    };
+
+    createPlainRenderer().onEvent({
+      type: "service-completed",
+      timestamp,
+      api: "orders",
+      service,
+    });
+
+    expect(logLines()).toEqual([
+      "notification: verified-by-tests -> schemend/update (needs review: " +
+        "could not verify the fix; [flagged] hardcoded TL currency suffix)",
+    ]);
+  });
+
   it("announces no changes and prints the budget line on run-finished", () => {
     createPlainRenderer().onEvent({
       type: "run-finished",

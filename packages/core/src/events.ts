@@ -6,7 +6,7 @@ import type {
   ServiceResult,
 } from "./types.js";
 
-export const EVENT_SCHEMA_VERSION = 2;
+export const EVENT_SCHEMA_VERSION = 3;
 
 export type CheckStepName =
   | "detect"
@@ -27,22 +27,25 @@ export type StepFailureReason =
   | "schema-read-failed"
   | "other";
 
-/** The fix agent's four tools (agent-tools.ts); shared here so events don't depend on agent-tools.ts. */
+/** The fix agent's five tools (agent-tools.ts); shared here so events don't depend on agent-tools.ts. */
 export type AgentToolName =
   | "read_file"
   | "edit_file"
   | "run_build"
-  | "run_tests";
+  | "run_tests"
+  | "flag";
 
 type AgentToolCallDetail =
   | { tool: "read_file"; file: string }
   | { tool: "edit_file"; file: string }
   | { tool: "run_build" }
-  | { tool: "run_tests" };
+  | { tool: "run_tests" }
+  | { tool: "flag"; file: string; reason: string };
 
 type AgentToolResultDetail =
   | { tool: "read_file"; status: "success" | "error"; file: string }
   | { tool: "edit_file"; status: "success" | "error"; file: string }
+  | { tool: "flag"; status: "success" | "error"; file: string }
   | {
       tool: "run_build";
       status: "success" | "error";

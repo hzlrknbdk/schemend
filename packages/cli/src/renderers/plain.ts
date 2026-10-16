@@ -1,8 +1,17 @@
-import type { ApiChange, CheckEvent } from "@schemend/core";
+import type { ApiChange, CheckEvent, ServiceResult } from "@schemend/core";
 import type { Renderer } from "./types.js";
 
 function breakingCount(changes: ApiChange[]): number {
   return changes.filter((change) => change.severity === "breaking").length;
+}
+
+/** Marks an agent-flagged item apart from an orchestrator one (cancelled/budget-exceeded/build-failed) - the only place today that shows `review` to a user. */
+function formatReviewItems(review: ServiceResult["review"]): string {
+  return review
+    .map((item) =>
+      item.source === "agent-flag" ? `[flagged] ${item.reason}` : item.reason,
+    )
+    .join("; ");
 }
 
 function formatToolCall(
@@ -12,6 +21,8 @@ function formatToolCall(
     case "read_file":
     case "edit_file":
       return `${event.api}: agent -> ${event.tool} ${event.file}`;
+    case "flag":
+      return `${event.api}: agent -> flag ${event.file} (${event.reason})`;
     case "run_build":
     case "run_tests":
       return `${event.api}: agent -> ${event.tool}`;
@@ -24,6 +35,7 @@ function formatToolResult(
   switch (event.tool) {
     case "read_file":
     case "edit_file":
+    case "flag":
       return `${event.api}: agent <- ${event.tool} ${event.file} (${event.status})`;
     case "run_build": {
       // `status` is only whether the tool call itself crashed (run_build never throws on a
@@ -128,7 +140,7 @@ export function createPlainRenderer(): Renderer {
             (service.branch ? ` -> ${service.branch}` : "");
           console.log(
             service.review.length > 0
-              ? `${headline} (needs review: ${service.review.map((item) => item.reason).join("; ")})`
+              ? `${headline} (needs review: ${formatReviewItems(service.review)})`
               : headline,
           );
           return;

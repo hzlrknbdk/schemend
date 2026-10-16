@@ -248,6 +248,48 @@ describe("runCheck", () => {
     expect(report.spentUsd).toBeCloseTo(0.05);
   });
 
+  it("passes the fix agent's review through unchanged, including an agent-flag item's source", async () => {
+    mockedDiff.mockResolvedValue([change]);
+    mockedFixAgent.mockImplementation(async ({ budget }) => {
+      await mkdir(path.join(root, "src"), { recursive: true });
+      await writeFile(path.join(root, "src/a.ts"), "fixed");
+      budget.record(0.05);
+      return {
+        changedFiles: ["src/a.ts"],
+        checks: [{ name: "test", status: "passed" }],
+        confidence: "verified-by-tests",
+        costUsd: 0.05,
+        review: [
+          {
+            file: "src/receipt-formatter.ts",
+            reason: "hardcoded TL currency suffix",
+            source: "agent-flag",
+          },
+        ],
+      };
+    });
+    const adapter = makeAdapter({
+      findAffected: async () => [
+        { file: "src/a.ts", line: 1, changeId: change.id, snippet: "x" },
+      ],
+    });
+
+    const report = await runCheck({
+      config: baseConfig(),
+      root,
+      exec: fakeExec([["src/a.ts"]]),
+      adapters: [adapter],
+    });
+
+    expect(report.services[0]?.review).toEqual([
+      {
+        file: "src/receipt-formatter.ts",
+        reason: "hardcoded TL currency suffix",
+        source: "agent-flag",
+      },
+    ]);
+  });
+
   it("stops once the shared budget is exhausted and reports the rest as skipped", async () => {
     mockedDiff.mockResolvedValue([change]);
     mockedFixAgent.mockImplementation(async ({ budget }) => {

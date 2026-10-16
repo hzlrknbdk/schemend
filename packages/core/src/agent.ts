@@ -74,7 +74,10 @@ function buildPrompt(
       "code compiles) - run_build's own result will name them when that happens, and you may " +
       "then edit those too. Don't edit any file that hasn't been named as affected, originally " +
       "or newly. Keep fixing within whatever is currently affected until build and tests pass " +
-      "or you run out of ideas, then stop.",
+      "or you run out of ideas, then stop. If a change you just made rests on a behavioral " +
+      "assumption you can't verify from the schema alone (e.g. a currency, unit, or format " +
+      "assumption in the same code), call flag with that file and why - after fixing what you " +
+      "can, not in place of it.",
   ].join("\n");
 }
 
@@ -107,17 +110,50 @@ function extractPath(input: unknown): string | undefined {
   return undefined;
 }
 
+/** Same reasoning as extractPath, but flag's tool uses `file`/`reason`, not `path`. */
+function extractFlagInput(
+  input: unknown,
+): { file: string; reason: string } | undefined {
+  if (typeof input !== "object" || input === null) return undefined;
+  const { file, reason } = input as { file: unknown; reason: unknown };
+  if (typeof file !== "string" || typeof reason !== "string") return undefined;
+  return { file, reason };
+}
+
+/**
+ * Merges the agent's own flag-tool reports into the orchestrator's review list and dedupes by
+ * file+reason (a model can call flag twice with the same args). The single place every exit path
+ * (normal, cancelled, budget-exceeded) routes `review` through, so a future new exit path can't
+ * forget to include flags. Exported for direct testing of the merge/dedup logic itself.
+ */
+export function finalizeReview(
+  review: readonly ReviewItem[],
+  flags: readonly ReviewItem[],
+): ReviewItem[] {
+  const seen = new Set<string>();
+  const result: ReviewItem[] = [];
+  for (const item of [...review, ...flags]) {
+    const key = `${item.file}\u0000${item.reason}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(item);
+  }
+  return result;
+}
+
 /**
  * Fix + Verify (SPEC §2 steps 5-6). Assumes the caller already ran baseline (step 3) and
  * regeneration + impact (step 4). A bash-free Claude Agent SDK loop restricted to
- * read_file/edit_file/run_build/run_tests (SPEC §6), bounded by `maxBudgetUsd`; "retry within
- * budget" is the agent calling run_build/run_tests itself, not separate code. Confidence and the
- * final checks come from our own build/test after the loop, not the agent's self-reports.
+ * read_file/edit_file/run_build/run_tests/flag (SPEC §6), bounded by `maxBudgetUsd`; "retry
+ * within budget" is the agent calling run_build/run_tests itself, not separate code. Confidence
+ * and the final checks come from our own build/test after the loop, not the agent's self-reports.
  *
  * Emits step-started/-finished ("fix", "verify"), agent-tool-call/-result (parsed from the SDK's
  * message stream, see DECISIONS.md), check-result, and cost-updated once the SDK reports a real
  * total_cost_usd. An aborted `abortController` is a clean stop (confidence "unverified"), not a
- * crash - the final "verify" build/test is skipped entirely.
+ * crash - the final "verify" build/test is skipped entirely. Every returned `review` (every exit
+ * path, including cancelled/budget-exceeded) is `finalizeReview`'d, so the agent's own flag calls
+ * are never lost regardless of how the run ends.
  */
 export async function runFixAgent(
   input: FixAgentInput,
@@ -143,12 +179,15 @@ export async function runFixAgent(
       checks: [],
       confidence: "unverified",
       costUsd: 0,
-      review: [
-        {
-          file: ctx.root,
-          reason: "cancelled before this service could be fixed",
-        },
-      ],
+      review: finalizeReview(
+        [
+          {
+            file: ctx.root,
+            reason: "cancelled before this service could be fixed",
+          },
+        ],
+        [],
+      ),
     };
   }
 
@@ -169,19 +208,22 @@ export async function runFixAgent(
         checks: [],
         confidence: "unverified",
         costUsd: 0,
-        review: [
-          {
-            file: ctx.root,
-            reason: "budget exhausted before this service could be fixed",
-          },
-        ],
+        review: finalizeReview(
+          [
+            {
+              file: ctx.root,
+              reason: "budget exhausted before this service could be fixed",
+            },
+          ],
+          [],
+        ),
       };
     }
     throw error;
   }
 
   const affectedFiles = [...new Set(affected.map((location) => location.file))];
-  const { server, changedFiles } = buildAgentTools(
+  const { server, changedFiles, flags } = buildAgentTools(
     ctx,
     adapter,
     affectedFiles,
@@ -194,7 +236,7 @@ export async function runFixAgent(
   let review: ReviewItem[] = [];
   const pendingToolCalls = new Map<
     string,
-    { tool: AgentToolName; file?: string }
+    { tool: AgentToolName; file?: string; reason?: string }
   >();
 
   const agentQuery = query({
@@ -212,10 +254,15 @@ export async function runFixAgent(
         ? { abortController: input.abortController }
         : {}),
       systemPrompt:
-        "You are schemend's fix agent. You only have four tools: read_file, edit_file, " +
-        "run_build, run_tests. You have no shell access and can only edit files you have been " +
-        "told are affected - that set can grow mid-session (run_build will tell you when it " +
-        "does), but you may never edit a file that hasn't been named as affected.",
+        "You are schemend's fix agent. You only have five tools: read_file, edit_file, " +
+        "run_build, run_tests, flag. You have no shell access and can only edit files you have " +
+        "been told are affected - that set can grow mid-session (run_build will tell you when " +
+        "it does), but you may never edit a file that hasn't been named as affected. Fix every " +
+        "structural change you can - flag is not a substitute for fixing. Only call flag for a " +
+        "behavioral assumption tied to an edit you can't verify is still correct (e.g. the " +
+        "schema change tells you a field changed, not whether a currency/unit assumption built " +
+        "on it is still valid) - not for every change, and not instead of a fix you're able to " +
+        "make.",
     },
   });
 
@@ -236,6 +283,21 @@ export async function runFixAgent(
               toolUseId: block.id,
               tool: toolName,
               file,
+            });
+          } else if (toolName === "flag") {
+            const flagInput = extractFlagInput(block.input);
+            pendingToolCalls.set(block.id, {
+              tool: toolName,
+              file: flagInput?.file ?? "",
+              reason: flagInput?.reason ?? "",
+            });
+            emit({
+              type: "agent-tool-call",
+              api,
+              toolUseId: block.id,
+              tool: "flag",
+              file: flagInput?.file ?? "",
+              reason: flagInput?.reason ?? "",
             });
           } else {
             pendingToolCalls.set(block.id, { tool: toolName });
@@ -272,6 +334,7 @@ export async function runFixAgent(
           switch (pending.tool) {
             case "read_file":
             case "edit_file":
+            case "flag":
               emit({
                 type: "agent-tool-result",
                 api,
@@ -370,7 +433,7 @@ export async function runFixAgent(
       checks: [],
       confidence: "unverified",
       costUsd,
-      review,
+      review: finalizeReview(review, flags),
     };
   }
 
@@ -402,6 +465,6 @@ export async function runFixAgent(
     checks: [finalBuild, finalTest],
     confidence,
     costUsd,
-    review,
+    review: finalizeReview(review, flags),
   };
 }

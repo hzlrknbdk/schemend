@@ -49,6 +49,7 @@ const ApiChangeSchema = z.object({
 const ReviewItemSchema = z.object({
   file: z.string(),
   reason: z.string(),
+  source: z.exactOptional(z.literal("agent-flag")),
 }) satisfies z.ZodType<ReviewItem>;
 
 const CheckResultSchema = z.object({

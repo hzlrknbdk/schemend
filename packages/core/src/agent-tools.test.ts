@@ -66,6 +66,7 @@ describe("qualifiedToolName", () => {
       "mcp__schemend__edit_file",
       "mcp__schemend__run_build",
       "mcp__schemend__run_tests",
+      "mcp__schemend__flag",
     ]);
   });
 });
@@ -460,5 +461,113 @@ describe("run_build / run_tests", () => {
     expect(text).toContain(
       '[[schemend:summary]]{"passed":9,"failed":1,"firstFailure":"shipping.test.ts > applies free shipping"}',
     );
+  });
+});
+
+describe("flag", () => {
+  it("records a behavioral concern with its source, even for a file outside the affected list", async () => {
+    await mkdir(path.join(root, "src"), { recursive: true });
+    await writeFile(path.join(root, "src/receipt-formatter.ts"), "x");
+    const { tools, flags } = buildAgentTools(
+      { root, exec: async () => ({ exitCode: 0, stdout: "", stderr: "" }) },
+      stubAdapter,
+      [],
+      apiEntry,
+      [change],
+    );
+
+    const result = await findTool(tools, "flag").handler(
+      {
+        file: "src/receipt-formatter.ts",
+        reason:
+          "hardcoded TL currency suffix, not covered by this schema change",
+      },
+      undefined,
+    );
+
+    expect(result.isError).toBeFalsy();
+    expect(flags).toEqual([
+      {
+        file: "src/receipt-formatter.ts",
+        reason:
+          "hardcoded TL currency suffix, not covered by this schema change",
+        source: "agent-flag",
+      },
+    ]);
+  });
+
+  it("trims the reason before storing it", async () => {
+    await writeFile(path.join(root, "a.ts"), "x");
+    const { tools, flags } = buildAgentTools(
+      { root, exec: async () => ({ exitCode: 0, stdout: "", stderr: "" }) },
+      stubAdapter,
+      [],
+      apiEntry,
+      [change],
+    );
+
+    await findTool(tools, "flag").handler(
+      { file: "a.ts", reason: "  needs a human look  " },
+      undefined,
+    );
+
+    expect(flags).toEqual([
+      { file: "a.ts", reason: "needs a human look", source: "agent-flag" },
+    ]);
+  });
+
+  it("refuses an empty reason", async () => {
+    await writeFile(path.join(root, "a.ts"), "x");
+    const { tools, flags } = buildAgentTools(
+      { root, exec: async () => ({ exitCode: 0, stdout: "", stderr: "" }) },
+      stubAdapter,
+      [],
+      apiEntry,
+      [change],
+    );
+
+    const result = await findTool(tools, "flag").handler(
+      { file: "a.ts", reason: "   " },
+      undefined,
+    );
+
+    expect(result.isError).toBe(true);
+    expect(flags).toEqual([]);
+  });
+
+  it("refuses a file outside the consumer project", async () => {
+    const { tools, flags } = buildAgentTools(
+      { root, exec: async () => ({ exitCode: 0, stdout: "", stderr: "" }) },
+      stubAdapter,
+      [],
+      apiEntry,
+      [change],
+    );
+
+    const result = await findTool(tools, "flag").handler(
+      { file: "../outside.ts", reason: "escape attempt" },
+      undefined,
+    );
+
+    expect(result.isError).toBe(true);
+    expect(flags).toEqual([]);
+  });
+
+  it("refuses a file that does not exist", async () => {
+    const { tools, flags } = buildAgentTools(
+      { root, exec: async () => ({ exitCode: 0, stdout: "", stderr: "" }) },
+      stubAdapter,
+      [],
+      apiEntry,
+      [change],
+    );
+
+    const result = await findTool(tools, "flag").handler(
+      { file: "nope.ts", reason: "ghost file" },
+      undefined,
+    );
+
+    expect(result.isError).toBe(true);
+    expect(flags).toEqual([]);
   });
 });

@@ -39,6 +39,8 @@ export interface AffectedLocation {
 export interface ReviewItem {
   file: string;
   reason: string;
+  /** Set only when this item came from the agent's own flag tool, not an orchestrator-generated one (cancelled/budget-exceeded/build-failed). */
+  source?: "agent-flag";
 }
 
 export interface CheckResult {

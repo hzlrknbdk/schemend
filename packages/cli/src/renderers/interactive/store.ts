@@ -92,6 +92,8 @@ function describeToolCall(
     case "read_file":
     case "edit_file":
       return `-> ${event.tool} ${event.file}`;
+    case "flag":
+      return `-> flag ${event.file} (${event.reason})`;
     case "run_build":
     case "run_tests":
       return `-> ${event.tool}`;
@@ -104,6 +106,7 @@ function describeToolResult(
   switch (event.tool) {
     case "read_file":
     case "edit_file":
+    case "flag":
       return `<- ${event.tool} ${event.file} (${event.status})`;
     case "run_build": {
       // `status` is only whether the tool call itself crashed - `checkStatus` is the real build
