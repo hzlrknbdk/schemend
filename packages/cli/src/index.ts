@@ -7,9 +7,11 @@ import {
   DockerUnavailableError,
   diffSchemas,
   GitLsRemoteError,
+  isIncomplete,
   loadConfig,
   MissingApiKeyError,
   NotAGitRepositoryError,
+  pushSkipReason,
   runCheck,
   runRun,
   VERSION,
@@ -168,7 +170,7 @@ program
       try {
         const config = await loadConfig(configPath);
         const user = containerUser();
-        await runCheck({
+        const report = await runCheck({
           config,
           root,
           exec: realExec,
@@ -180,6 +182,11 @@ program
             recorder?.onEvent(event);
           },
         });
+        // An incomplete run (cancelled/budget-exceeded, or a service whose baseline/schema-read/
+        // Docker setup failed) must not exit 0 - that would hide the failure from CI.
+        if (isIncomplete(report)) {
+          process.exitCode = 1;
+        }
       } catch (error) {
         if (error instanceof DockerUnavailableError) {
           console.error(error.message);
@@ -250,7 +257,7 @@ program
       try {
         const config = await loadConfig(configPath);
         const user = containerUser();
-        await runRun({
+        const report = await runRun({
           config,
           root,
           exec: realExec,
@@ -263,6 +270,14 @@ program
             recorder?.onEvent(event);
           },
         });
+        const skipReason = pushSkipReason(report);
+        if (skipReason === "no-changes") {
+          console.log("Push skipped: no changes to push.");
+        } else if (skipReason === "incomplete-run") {
+          const detail = report.stoppedReason ?? "one or more services failed";
+          console.error(`Push skipped: run did not complete (${detail}).`);
+          process.exitCode = 1;
+        }
       } catch (error) {
         if (printIfKnownRunError(error)) return;
         throw error;

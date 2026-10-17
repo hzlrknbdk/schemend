@@ -26,18 +26,35 @@ export class ChangeRequestFailedAfterPushError extends Error {
 }
 
 /**
- * Whether this run is complete enough to push. `report.stoppedReason` set (cancelled/budget
- * exceeded mid-run) or any `ServiceResult` carrying an orchestrator-generated review item
- * (baseline-failed/schema-read-failed/docker-unavailable/cancelled/budget-exceeded) means at
- * least one api in this consumer didn't finish; an agent-flag item is a normal, successful
- * outcome and never counts. v1 pushes nothing in that case rather than open a PR with some apis
- * fixed and others silently missing - see DECISIONS.md.
+ * Whether this run (from `schemend check` or `schemend run`) is complete enough to push.
+ * `report.stoppedReason` set (cancelled/budget exceeded mid-run) or any `ServiceResult` carrying
+ * an orchestrator-generated review item (baseline-failed/schema-read-failed/docker-unavailable/
+ * cancelled/budget-exceeded) means at least one api in this consumer didn't finish; an agent-flag
+ * item is a normal, successful outcome and never counts. `runRun` pushes nothing in that case
+ * rather than open a PR with some apis fixed and others silently missing - see DECISIONS.md. The
+ * CLI also uses this directly to decide `check`/`run`'s exit code: a stack trace isn't needed,
+ * but exit 0 on an incomplete run would hide the failure from CI.
  */
-function isIncomplete(report: RunReport): boolean {
+export function isIncomplete(report: RunReport): boolean {
   if (report.stoppedReason !== undefined) return true;
   return report.services.some((service) =>
     service.review.some((item) => item.source !== "agent-flag"),
   );
+}
+
+export type PushSkipReason = "no-changes" | "incomplete-run";
+
+/**
+ * Why `runRun` would skip push/PR for this report, or undefined if it pushed (or would push).
+ * Exported so the CLI can log the same reason and pick an exit code without re-deriving the
+ * logic: "no-changes" is a normal, successful outcome (exit 0); "incomplete-run" means the fix
+ * itself didn't finish and should not exit silently as 0.
+ */
+export function pushSkipReason(report: RunReport): PushSkipReason | undefined {
+  if (!report.services.some((service) => service.branch !== "")) {
+    return "no-changes";
+  }
+  return isIncomplete(report) ? "incomplete-run" : undefined;
 }
 
 /**

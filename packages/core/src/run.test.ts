@@ -4,7 +4,12 @@ import type { Config } from "./config.js";
 import type { Exec } from "./context.js";
 import type { CheckEvent } from "./events.js";
 import type { PlatformAdapter } from "./platform-adapter.js";
-import { ChangeRequestFailedAfterPushError, runRun } from "./run.js";
+import {
+  ChangeRequestFailedAfterPushError,
+  isIncomplete,
+  pushSkipReason,
+  runRun,
+} from "./run.js";
 import type {
   ApiChange,
   ChangeRequest,
@@ -424,5 +429,117 @@ describe("runRun", () => {
     expect(onlyFinished.report.services[0]?.changeRequest).toEqual(
       changeRequest,
     );
+  });
+});
+
+describe("isIncomplete", () => {
+  it("is false for a fully completed report with no review items", () => {
+    const report: RunReport = {
+      api: "orders",
+      startedAt: "t0",
+      finishedAt: "t1",
+      changes: [change],
+      services: [makeService()],
+      budgetUsd: 1,
+      spentUsd: 0.05,
+    };
+    expect(isIncomplete(report)).toBe(false);
+  });
+
+  it("is true when stoppedReason is set, even with no review items", () => {
+    const report: RunReport = {
+      api: "orders",
+      startedAt: "t0",
+      finishedAt: "t1",
+      changes: [change],
+      services: [makeService()],
+      budgetUsd: 1,
+      spentUsd: 1,
+      stoppedReason: "budget exceeded",
+    };
+    expect(isIncomplete(report)).toBe(true);
+  });
+
+  it("is true when a service carries an orchestrator review item, without stoppedReason", () => {
+    const report: RunReport = {
+      api: "orders",
+      startedAt: "t0",
+      finishedAt: "t1",
+      changes: [change],
+      services: [
+        makeService({
+          review: [{ file: "/repo/consumer", reason: "baseline failed" }],
+        }),
+      ],
+      budgetUsd: 1,
+      spentUsd: 0,
+    };
+    expect(isIncomplete(report)).toBe(true);
+  });
+
+  it("is false when the only review item is agent-flagged", () => {
+    const report: RunReport = {
+      api: "orders",
+      startedAt: "t0",
+      finishedAt: "t1",
+      changes: [change],
+      services: [
+        makeService({
+          review: [
+            {
+              file: "src/lib/format.ts",
+              reason: "hardcoded currency",
+              source: "agent-flag",
+            },
+          ],
+        }),
+      ],
+      budgetUsd: 1,
+      spentUsd: 0.05,
+    };
+    expect(isIncomplete(report)).toBe(false);
+  });
+});
+
+describe("pushSkipReason", () => {
+  it("is 'no-changes' when no service has a branch, even if the run is otherwise incomplete", () => {
+    const report: RunReport = {
+      api: "orders",
+      startedAt: "t0",
+      finishedAt: "t1",
+      changes: [],
+      services: [],
+      budgetUsd: 1,
+      spentUsd: 0,
+      stoppedReason: "cancelled",
+    };
+    expect(pushSkipReason(report)).toBe("no-changes");
+  });
+
+  it("is 'incomplete-run' when a branch exists but the run didn't finish", () => {
+    const report: RunReport = {
+      api: "orders",
+      startedAt: "t0",
+      finishedAt: "t1",
+      changes: [change],
+      services: [makeService()],
+      budgetUsd: 1,
+      spentUsd: 1,
+      stoppedReason: "budget exceeded",
+    };
+    expect(pushSkipReason(report)).toBe("incomplete-run");
+  });
+
+  it("is undefined when there's a pushable branch and the run completed", () => {
+    const report: RunReport = {
+      api: "orders",
+      startedAt: "t0",
+      finishedAt: "t1",
+      changes: [change],
+      services: [makeService()],
+      budgetUsd: 1,
+      spentUsd: 0.05,
+    };
+    expect(pushSkipReason(report)).toBeUndefined();
   });
 });
