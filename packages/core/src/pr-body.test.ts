@@ -53,7 +53,7 @@ describe("buildPrBody", () => {
     expect(body).toContain("## Needs your review\nNothing flagged.");
   });
 
-  it("truncates a body past ~65K characters and points to the run report", () => {
+  it("truncates a body past ~65K characters by default and points to the run report", () => {
     const hugeReview: ServiceResult = {
       ...service,
       review: Array.from({ length: 2000 }, (_, i) => ({
@@ -65,6 +65,27 @@ describe("buildPrBody", () => {
     expect(body.length).toBeLessThanOrEqual(65_000);
     expect(
       body.endsWith("(truncated - see the full run report for details)*"),
+    ).toBe(true);
+  });
+
+  it("truncates to a caller-supplied maxBodyLength instead of the default (e.g. GitLab's larger limit)", () => {
+    const hugeReview: ServiceResult = {
+      ...service,
+      review: Array.from({ length: 2000 }, (_, i) => ({
+        file: `src/file-${i}.ts`,
+        reason: "x".repeat(50),
+      })),
+    };
+    const unbounded = buildPrBody("orders", changes, hugeReview, 1_000_000);
+    expect(unbounded.body).not.toContain("truncated");
+    expect(unbounded.body.length).toBeGreaterThan(65_000);
+
+    const tighter = buildPrBody("orders", changes, hugeReview, 500);
+    expect(tighter.body.length).toBeLessThanOrEqual(500);
+    expect(
+      tighter.body.endsWith(
+        "(truncated - see the full run report for details)*",
+      ),
     ).toBe(true);
   });
 });

@@ -9,6 +9,7 @@ export * from "./context.js";
 export * from "./docker-exec.js";
 export * from "./events.js";
 export * from "./git.js";
+export * from "./git-push-auth.js";
 export * from "./language-adapter.js";
 export * from "./oasdiff.js";
 export * from "./platform-adapter.js";

@@ -5,7 +5,7 @@ import type {
   ServiceResult,
 } from "./types.js";
 
-const MAX_BODY_LENGTH = 65_000;
+const DEFAULT_MAX_BODY_LENGTH = 65_000;
 const TRUNCATION_NOTE =
   "\n\n*(truncated - see the full run report for details)*";
 
@@ -48,6 +48,7 @@ export function buildPrBody(
   api: string,
   changes: ApiChange[],
   service: ServiceResult,
+  maxBodyLength: number = DEFAULT_MAX_BODY_LENGTH,
 ): { title: string; body: string } {
   const title = `schemend: update ${service.service} for ${api} change`;
 
@@ -60,11 +61,12 @@ export function buildPrBody(
   ];
 
   let body = sections.join("\n\n");
-  // GitHub/GitLab both reject a PR/MR body past ~65536 characters; keep a safety margin and point
-  // the reader at the run report instead of silently failing openChangeRequest.
-  if (body.length > MAX_BODY_LENGTH) {
+  // GitHub and GitLab have different body/description limits (PlatformAdapter.maxBodyLength);
+  // keep a safety margin under whichever one the caller passes and point the reader at the run
+  // report instead of silently failing openChangeRequest.
+  if (body.length > maxBodyLength) {
     body =
-      body.slice(0, MAX_BODY_LENGTH - TRUNCATION_NOTE.length) + TRUNCATION_NOTE;
+      body.slice(0, maxBodyLength - TRUNCATION_NOTE.length) + TRUNCATION_NOTE;
   }
 
   return { title, body };
