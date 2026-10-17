@@ -7,7 +7,9 @@ import type { Exec, ExecResult } from "./context.js";
 import {
   findRepoRoot,
   GitRefNotFoundError,
+  GitRefResolutionError,
   NotAGitRepositoryError,
+  resolveRef,
   writeFileAtRef,
 } from "./git.js";
 
@@ -149,5 +151,46 @@ describe("findRepoRoot", () => {
     await expect(findRepoRoot(dir, exec)).rejects.toThrow(
       NotAGitRepositoryError,
     );
+  });
+});
+
+describe("resolveRef", () => {
+  it("returns the same sha even after a later commit moves HEAD~1 forward", async () => {
+    const { root, firstRef } = await createRepoWithTwoCommits();
+    const exec = execIn(root);
+
+    const resolvedBeforeThirdCommit = await resolveRef(root, "HEAD~1", exec);
+    expect(resolvedBeforeThirdCommit).toBe(firstRef);
+
+    // a third commit lands - the exact thing a prior api's own fix commit does mid-runCheck.
+    // Re-evaluating the bare string "HEAD~1" now would resolve to the *second* commit instead;
+    // the sha this function already returned must stay exactly what it was.
+    await writeFile(path.join(root, "schema.json"), "newer");
+    await exec("git add schema.json");
+    await exec(`git ${GIT_ENV} commit -q -m third`);
+
+    expect(resolvedBeforeThirdCommit).toBe(firstRef);
+    await expect(resolveRef(root, "HEAD~1", exec)).resolves.not.toBe(firstRef);
+  });
+
+  it("throws GitRefResolutionError when the ref doesn't exist", async () => {
+    const root = await tempDir();
+    const exec = execIn(root);
+    await exec("git init -q");
+    await writeFile(path.join(root, "schema.json"), "old");
+    await exec("git add schema.json");
+    await exec(`git ${GIT_ENV} commit -q -m only`);
+
+    // only one commit exists - HEAD~1 doesn't resolve to anything.
+    await expect(resolveRef(root, "HEAD~1", exec)).rejects.toThrow(
+      GitRefResolutionError,
+    );
+  });
+
+  it("still resolves the right repo when exec's own cwd is not root (explicit -C root)", async () => {
+    const { root, firstRef } = await createRepoWithTwoCommits();
+    const exec = execUnscoped();
+
+    await expect(resolveRef(root, "HEAD~1", exec)).resolves.toBe(firstRef);
   });
 });

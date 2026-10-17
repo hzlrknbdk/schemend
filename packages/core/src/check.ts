@@ -17,7 +17,7 @@ import {
 } from "./docker-exec.js";
 import type { CheckEvent } from "./events.js";
 import { createEventEmitter, EVENT_SCHEMA_VERSION } from "./events.js";
-import { findRepoRoot, writeFileAtRef } from "./git.js";
+import { findRepoRoot, resolveRef, writeFileAtRef } from "./git.js";
 import type { LanguageAdapter } from "./language-adapter.js";
 import { DockerUnavailableError, diffSchemas } from "./oasdiff.js";
 import type {
@@ -199,7 +199,10 @@ async function commitAll(
 /** `schemend check` (SPEC §9): the local, no-push half of SPEC §2's flow for one consumer. Shares one Budget across every api in config.apis; all fixes land as commits on one local branch, matching "one PR per consumer" - `schemend run` pushes it and opens that PR. */
 export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
   const { config, root, exec, adapters } = options;
-  const baseRef = options.baseRef ?? "HEAD~1";
+  // Resolved once, up front - not re-evaluated per api. "HEAD~1" as a bare string would shift
+  // forward with every api that commits its own fix, silently missing a later api's schema
+  // change when several change together in one commit (see resolveRef's doc comment).
+  const baseRef = await resolveRef(root, options.baseRef ?? "HEAD~1", exec);
   const ctx: AdapterContext = { root, exec };
   const budget = new Budget(config.budgetUsd);
   const service = path.basename(path.resolve(root));

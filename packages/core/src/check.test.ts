@@ -1,3 +1,4 @@
+import { exec as execCallback } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -527,5 +528,94 @@ describe("runCheck events", () => {
       events.filter((event) => event.type === "service-completed"),
     ).toHaveLength(1);
     expect(events.at(-1)?.type).toBe("run-finished");
+  });
+});
+
+const GIT_ENV = "-c user.email=a@b.c -c user.name=a -c commit.gpgsign=false";
+
+function realExecIn(cwd: string): Exec {
+  return (command) =>
+    new Promise<ExecResult>((resolve) => {
+      execCallback(command, { cwd }, (error, stdout, stderr) => {
+        resolve({
+          exitCode: !error
+            ? 0
+            : typeof error.code === "number"
+              ? error.code
+              : 1,
+          stdout,
+          stderr,
+        });
+      });
+    });
+}
+
+/**
+ * Real git for every `git ...` command (the baseRef-resolution bug this tests for is a property
+ * of git's own ref semantics, not something a canned-response fake can reproduce), a trivial
+ * success for everything else (Docker/pnpm install) - the same blanket-success shape fakeExec
+ * gives those commands elsewhere in this file, just without faking the git side too.
+ */
+function hybridExec(root: string): Exec {
+  const real = realExecIn(root);
+  return async (command, env) => {
+    if (command.trimStart().startsWith("git ")) {
+      return real(command, env);
+    }
+    return { exitCode: 0, stdout: "", stderr: "" };
+  };
+}
+
+describe("runCheck baseRef resolution", () => {
+  it("detects a schema change for every api, not just the first, when they all change in the same commit", async () => {
+    const exec = hybridExec(root);
+    await exec("git init -q");
+    await writeFile(path.join(root, "schema-a.json"), "old-a");
+    await writeFile(path.join(root, "schema-b.json"), "old-b");
+    await exec("git add -A");
+    await exec(`git ${GIT_ENV} commit -q -m first`);
+    // Both schemas change together in one commit - the realistic case: a real CI run on a push
+    // that touched two services at once, not two separate schema-change commits.
+    await writeFile(path.join(root, "schema-a.json"), "new-a");
+    await writeFile(path.join(root, "schema-b.json"), "new-b");
+    await exec("git add -A");
+    await exec(`git ${GIT_ENV} commit -q -m second`);
+
+    mockedDiff.mockImplementation(async (oldFile, newFile) => {
+      const [oldContent, newContent] = await Promise.all([
+        readFile(oldFile, "utf-8"),
+        readFile(newFile, "utf-8"),
+      ]);
+      return oldContent === newContent ? [] : [change];
+    });
+    const regenerateClient = vi.fn(async (_ctx, apiEntry) => {
+      // A real fix commit lands between the two apis' turns, exactly like check.ts's own
+      // commitAll - this is what used to move a bare "HEAD~1" out from under the second api.
+      await writeFile(path.join(root, `${apiEntry.name}-generated.ts`), "x");
+    });
+    const adapter = makeAdapter({
+      regenerateClient,
+      findAffected: async () => [],
+    });
+
+    const report = await runCheck({
+      config: baseConfig({
+        apis: [
+          { name: "a", schema: "schema-a.json", usedIn: [] },
+          { name: "b", schema: "schema-b.json", usedIn: [] },
+        ],
+      }),
+      root,
+      exec,
+      adapters: [adapter],
+    });
+
+    expect(report.services).toHaveLength(2);
+    expect(report.services.every((s) => s.branch === "schemend/update")).toBe(
+      true,
+    );
+    expect(report.services.flatMap((s) => s.changedFiles)).toEqual(
+      expect.arrayContaining(["a-generated.ts", "b-generated.ts"]),
+    );
   });
 });

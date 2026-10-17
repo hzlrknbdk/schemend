@@ -17,6 +17,33 @@ export class NotAGitRepositoryError extends Error {
   }
 }
 
+export class GitRefResolutionError extends Error {
+  constructor(ref: string, detail: string) {
+    super(`could not resolve git ref "${ref}": ${detail}`);
+    this.name = "GitRefResolutionError";
+  }
+}
+
+/**
+ * Resolves `ref` (e.g. the default "HEAD~1") to a concrete commit sha, once, before runCheck's
+ * api loop starts. "HEAD~1" as a bare string is relative to whatever HEAD *currently* is - every
+ * api that successfully commits a fix moves HEAD forward by one before the next api's turn, so
+ * re-resolving the same string per api would silently see the *previous* api's own fix commit as
+ * the baseline instead of the real pre-change state, missing that api's schema change entirely
+ * when several schemas change together in one commit (a real product bug, see DECISIONS.md).
+ */
+export async function resolveRef(
+  root: string,
+  ref: string,
+  exec: Exec,
+): Promise<string> {
+  const result = await exec(`git -C ${root} rev-parse ${ref}`);
+  if (result.exitCode !== 0) {
+    throw new GitRefResolutionError(ref, result.stderr || result.stdout);
+  }
+  return result.stdout.trim();
+}
+
 /** The repo root ensureDockerCtx mounts read-only, so a sibling schema reference (SPEC §5) still resolves. Always runs scoped via explicit `git -C <startDir>`, same convention as every other git call in this file and in git-push-auth.ts - never relies on exec's own cwd happening to already be startDir. */
 export async function findRepoRoot(
   startDir: string,
