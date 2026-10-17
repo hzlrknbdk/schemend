@@ -279,6 +279,15 @@ importers:
         specifier: ^28.0.0
         version: 28.0.0
 
+  packages/platform-github:
+    dependencies:
+      '@schemend/core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
+
   packages/ui:
     dependencies:
       '@fontsource/dm-sans':
