@@ -4,8 +4,16 @@ export interface ExecResult {
   stderr: string;
 }
 
-/** Runs a shell command and resolves with its result; never rejects on a non-zero exit. */
-export type Exec = (command: string) => Promise<ExecResult>;
+/**
+ * Runs a shell command and resolves with its result; never rejects on a non-zero exit. The
+ * optional `env` is merged into the child process's environment for that one call only (never
+ * persisted to disk or echoed into the command string) - used by the GitHub adapter's push to pass
+ * a one-shot `GIT_CONFIG_*` auth header without the token ever appearing in argv.
+ */
+export type Exec = (
+  command: string,
+  env?: Record<string, string>,
+) => Promise<ExecResult>;
 
 export interface AdapterContext {
   root: string;
