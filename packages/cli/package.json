@@ -22,6 +22,8 @@
     "@schemend/lang-csharp": "workspace:*",
     "@schemend/lang-java": "workspace:*",
     "@schemend/lang-typescript": "workspace:*",
+    "@schemend/platform-github": "workspace:*",
+    "@schemend/platform-gitlab": "workspace:*",
     "commander": "^15.0.0",
     "ink": "^8.0.0",
     "react": "^19.3.0"

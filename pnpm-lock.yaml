@@ -215,6 +215,12 @@ importers:
       '@schemend/lang-typescript':
         specifier: workspace:*
         version: link:../lang-typescript
+      '@schemend/platform-github':
+        specifier: workspace:*
+        version: link:../platform-github
+      '@schemend/platform-gitlab':
+        specifier: workspace:*
+        version: link:../platform-gitlab
       commander:
         specifier: ^15.0.0
         version: 15.0.0

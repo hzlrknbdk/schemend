@@ -1,21 +1,76 @@
 #!/usr/bin/env node
 import path from "node:path";
+import type { Config, PlatformAdapter } from "@schemend/core";
 import {
+  ChangeRequestFailedAfterPushError,
   ConfigValidationError,
   DockerUnavailableError,
   diffSchemas,
+  GitLsRemoteError,
   loadConfig,
   MissingApiKeyError,
+  NotAGitRepositoryError,
   runCheck,
+  runRun,
   VERSION,
 } from "@schemend/core";
 import { csharpAdapter } from "@schemend/lang-csharp";
 import { javaAdapter } from "@schemend/lang-java";
 import { typescriptAdapter } from "@schemend/lang-typescript";
+import {
+  GitPushError as GithubGitPushError,
+  MissingChangeRequestNumberError as GithubMissingChangeRequestNumberError,
+  githubAdapter,
+  MissingGithubRepositoryError,
+  MissingGithubTokenError,
+} from "@schemend/platform-github";
+import {
+  GitPushError as GitlabGitPushError,
+  MissingChangeRequestNumberError as GitlabMissingChangeRequestNumberError,
+  gitlabAdapter,
+  MissingGitlabProjectError,
+  MissingGitlabProjectUrlError,
+  MissingGitlabTokenError,
+} from "@schemend/platform-gitlab";
 import { Command } from "commander";
 import { realExec } from "./exec.js";
 import { createEventRecorder } from "./record-events.js";
 import { createRenderer, selectRenderer } from "./renderers/index.js";
+
+const platformAdapters: Record<Config["platform"], PlatformAdapter> = {
+  github: githubAdapter,
+  gitlab: gitlabAdapter,
+};
+
+/** Known, user-facing failures from the push/PR step - printed as a clean message, never a stack trace (schemend run's only output in CI is its own log). Anything else is a real bug and should surface with its stack trace. */
+function printIfKnownRunError(error: unknown): boolean {
+  const known = [
+    DockerUnavailableError,
+    ConfigValidationError,
+    MissingApiKeyError,
+    NotAGitRepositoryError,
+    GitLsRemoteError,
+    ChangeRequestFailedAfterPushError,
+    MissingGithubTokenError,
+    MissingGithubRepositoryError,
+    GithubGitPushError,
+    GithubMissingChangeRequestNumberError,
+    MissingGitlabTokenError,
+    MissingGitlabProjectError,
+    MissingGitlabProjectUrlError,
+    GitlabGitPushError,
+    GitlabMissingChangeRequestNumberError,
+  ];
+  if (
+    error instanceof Error &&
+    known.some((errorClass) => error instanceof errorClass)
+  ) {
+    console.error(error.message);
+    process.exitCode = 1;
+    return true;
+  }
+  return false;
+}
 
 function containerUser(): { uid: number; gid: number } | undefined {
   const uid = process.getuid?.();
@@ -141,6 +196,75 @@ program
           process.exitCode = 1;
           return;
         }
+        throw error;
+      } finally {
+        process.off("SIGINT", onSigint);
+        await renderer.stop?.();
+        await recorder?.close();
+      }
+    },
+  );
+
+program
+  .command("run")
+  .description(
+    "CI entry: schemend check, then push the branch and open/update one PR per consumer (SPEC §9)",
+  )
+  .option(
+    "-c, --config <path>",
+    "path to schemend.config.ts",
+    "schemend.config.ts",
+  )
+  .option(
+    "--json",
+    "emit one JSON-encoded event per line (NDJSON) instead of human-readable output",
+  )
+  .option(
+    "--record-events <file>",
+    "also record every event as NDJSON to this file",
+  )
+  .action(
+    async (opts: { config: string; json?: boolean; recordEvents?: string }) => {
+      const root = process.cwd();
+      const configPath = path.resolve(root, opts.config);
+
+      const abortController = new AbortController();
+      const onSigint = () => abortController.abort();
+      process.on("SIGINT", onSigint);
+
+      const kind = selectRenderer({
+        json: Boolean(opts.json),
+        isTTY: Boolean(process.stdout.isTTY),
+        isCi: Boolean(process.env.CI),
+      });
+      const renderer = createRenderer(kind, {
+        productName: "schemend",
+        version: VERSION,
+        consumer: path.basename(root),
+        onCancel: () => abortController.abort(),
+      });
+      const recorder = opts.recordEvents
+        ? createEventRecorder(path.resolve(root, opts.recordEvents))
+        : undefined;
+
+      try {
+        const config = await loadConfig(configPath);
+        const user = containerUser();
+        await runRun({
+          config,
+          root,
+          exec: realExec,
+          adapters: [typescriptAdapter, javaAdapter, csharpAdapter],
+          platform: platformAdapters[config.platform],
+          abortController,
+          ...(user !== undefined ? { containerUser: user } : {}),
+          onEvent: (event) => {
+            renderer.onEvent(event);
+            recorder?.onEvent(event);
+          },
+        });
+      } catch (error) {
+        if (printIfKnownRunError(error)) return;
         throw error;
       } finally {
         process.off("SIGINT", onSigint);
