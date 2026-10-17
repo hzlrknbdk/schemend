@@ -20,7 +20,7 @@ export class GithubApiError extends Error {
 /** Never logs or embeds the Authorization header; `path`/`body` here are the request path and the response body, neither of which can contain the token. */
 export async function githubRequest<T>(
   token: string,
-  method: "GET" | "POST" | "PATCH",
+  method: "GET" | "POST" | "PATCH" | "DELETE",
   path: string,
   schema: z.ZodType<T>,
   body?: unknown,

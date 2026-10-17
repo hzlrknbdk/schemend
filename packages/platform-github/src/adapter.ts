@@ -1,6 +1,7 @@
-import type { PlatformAdapter } from "@schemend/core";
+import type { ChangeRequest, PlatformAdapter } from "@schemend/core";
+import { discoverExtraHeaderKeys, getRemoteBranchSha } from "@schemend/core";
 import { z } from "zod";
-import { buildPushAuthEnv } from "./git-auth.js";
+import { buildGithubPushAuthEnv } from "./git-auth.js";
 import { readGithubRepository, readGithubToken } from "./github-env.js";
 import { githubRequest } from "./github-request.js";
 import {
@@ -16,10 +17,12 @@ export class GitPushError extends Error {
   }
 }
 
-export class InvalidPrUrlError extends Error {
-  constructor(url: string) {
-    super(`not a recognizable GitHub pull request URL: ${url}`);
-    this.name = "InvalidPrUrlError";
+export class MissingChangeRequestNumberError extends Error {
+  constructor() {
+    super(
+      "comment() needs a pull request number - the ChangeRequest it was given has none.",
+    );
+    this.name = "MissingChangeRequestNumberError";
   }
 }
 
@@ -54,33 +57,35 @@ async function findOpenPr(
   return results[0];
 }
 
-function parsePrUrl(url: string): {
-  owner: string;
-  repo: string;
-  number: number;
-} {
-  const match = url.match(
-    /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/,
-  );
-  const [, owner, repo, numberText] = match ?? [];
-  if (!owner || !repo || !numberText) throw new InvalidPrUrlError(url);
-  return { owner, repo, number: Number(numberText) };
+function requireNumber(changeRequest: ChangeRequest): number {
+  if (changeRequest.number === undefined) {
+    throw new MissingChangeRequestNumberError();
+  }
+  return changeRequest.number;
 }
 
 export const githubAdapter: PlatformAdapter = {
   id: "github",
+  maxBodyLength: 65_000,
 
   detectCi(env) {
     return env.GITHUB_ACTIONS === "true";
   },
 
   async pushBranch(root, branch, exec) {
-    const authEnv = buildPushAuthEnv(readGithubToken());
-    // Best-effort: refreshes the local remote-tracking ref so --force-with-lease has something
-    // real to compare against; a non-zero exit here just means this is the branch's first push.
-    await exec(`git -C ${root} fetch origin ${branch}`, authEnv);
+    // actions/checkout persists its own token into .git/config by default (persist-credentials),
+    // as a URL-scoped http.extraHeader - which silently wins over (not "also sends", just
+    // suppresses) a value given under the bare key, so our header has to go under that same key.
+    // See buildPushAuthEnv's doc comment for how this was verified.
+    const existingKeys = await discoverExtraHeaderKeys(root, exec);
+    const authEnv = buildGithubPushAuthEnv(readGithubToken(), existingKeys);
+    // A fresh CI checkout has no local remote-tracking ref for a branch a *previous* run created,
+    // so a bare --force-with-lease has nothing to compare against and git refuses the push
+    // outright. ls-remote gets the actual current value right before pushing instead - see
+    // DECISIONS.md for what this does and doesn't protect against.
+    const sha = await getRemoteBranchSha(root, "origin", branch, exec, authEnv);
     const result = await exec(
-      `git -C ${root} push --force-with-lease origin ${branch}`,
+      `git -C ${root} push --force-with-lease=${branch}:${sha ?? ""} origin ${branch}`,
       authEnv,
     );
     if (result.exitCode !== 0) {
@@ -116,9 +121,10 @@ export const githubAdapter: PlatformAdapter = {
     return { url: created.html_url, number: created.number };
   },
 
-  async comment(url, body) {
+  async comment(changeRequest, body) {
     const token = readGithubToken();
-    const { owner, repo, number } = parsePrUrl(url);
+    const { owner, repo } = readGithubRepository();
+    const number = requireNumber(changeRequest);
     await githubRequest(
       token,
       "POST",
