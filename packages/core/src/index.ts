@@ -12,4 +12,5 @@ export * from "./git.js";
 export * from "./language-adapter.js";
 export * from "./oasdiff.js";
 export * from "./platform-adapter.js";
+export * from "./pr-body.js";
 export * from "./types.js";

@@ -1,0 +1,32 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildPrBody > renders every SPEC §10 section, agent-flagged items split from orchestrator ones 1`] = `
+{
+  "body": "## What changed
+- **breaking** \`GET /orders/{id}\`: property 'totalPrice' was removed
+
+## Steps applied
+- detect
+- baseline
+- regenerate
+- impact
+- fix
+- verify
+
+## Verification
+- build: passed
+- test: passed
+- confidence: verified-by-tests
+
+## Needs your review
+### Flagged by the agent
+- \`src/lib/format.ts\`: hardcoded TRY suffix, couldn't verify the new currency field is always TRY
+
+### Other
+- \`src/lib/shipping.ts\`: orchestrator-generated note, not from the agent's flag tool
+
+## Cost
+$0.0554",
+  "title": "schemend: update checkout-web for orders change",
+}
+`;
