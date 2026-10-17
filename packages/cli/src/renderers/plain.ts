@@ -79,7 +79,7 @@ export function createPlainRenderer(): Renderer {
             `schemend check: ${event.apis.join(", ")} (budget $${event.budgetUsd.toFixed(2)})`,
           );
           return;
-        case "run-finished":
+        case "run-finished": {
           if (event.report.changes.length === 0) {
             console.log("No API changes detected.");
           }
@@ -89,7 +89,18 @@ export function createPlainRenderer(): Renderer {
                 ? ` (stopped: ${event.report.stoppedReason})`
                 : ""),
           );
+          // schemend run attaches the same ChangeRequest to every ServiceResult sharing that
+          // branch/PR (schemend check leaves it unset) - dedupe so one PR isn't logged N times.
+          const prUrls = new Set(
+            event.report.services
+              .map((service) => service.changeRequest?.url)
+              .filter((url): url is string => url !== undefined),
+          );
+          for (const url of prUrls) {
+            console.log(`Pull/merge request: ${url}`);
+          }
           return;
+        }
         case "step-started":
           console.log(`${event.api}: ${event.step}...`);
           return;

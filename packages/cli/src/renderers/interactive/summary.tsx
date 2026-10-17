@@ -8,6 +8,9 @@ export interface SummaryProps {
 
 export function Summary({ report }: SummaryProps) {
   const hasBranch = report.services.some((service) => service.branch);
+  const changeRequestUrl = report.services.find(
+    (service) => service.changeRequest,
+  )?.changeRequest?.url;
 
   return (
     <Box flexDirection="column" borderStyle="round" paddingX={1} marginTop={1}>
@@ -51,11 +54,15 @@ export function Summary({ report }: SummaryProps) {
         used
         {report.stoppedReason ? ` (stopped: ${report.stoppedReason})` : ""}
       </Text>
-      {hasBranch && (
-        <Text dimColor>
-          Next: review the "schemend/update" branch (git log / git diff), then
-          push and open a PR by hand when you're satisfied.
-        </Text>
+      {changeRequestUrl !== undefined ? (
+        <Text dimColor>Pull/merge request: {changeRequestUrl}</Text>
+      ) : (
+        hasBranch && (
+          <Text dimColor>
+            Next: review the "schemend/update" branch (git log / git diff), then
+            push and open a PR by hand when you're satisfied.
+          </Text>
+        )
       )}
     </Box>
   );

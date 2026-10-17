@@ -17,6 +17,7 @@ export const STEP_ORDER: CheckStepName[] = [
   "fix",
   "verify",
   "commit",
+  "push",
 ];
 
 export interface StepState {

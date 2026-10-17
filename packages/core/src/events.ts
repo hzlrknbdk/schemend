@@ -6,7 +6,7 @@ import type {
   ServiceResult,
 } from "./types.js";
 
-export const EVENT_SCHEMA_VERSION = 5;
+export const EVENT_SCHEMA_VERSION = 6;
 
 export type CheckStepName =
   | "detect"
@@ -15,7 +15,8 @@ export type CheckStepName =
   | "impact"
   | "fix"
   | "verify"
-  | "commit";
+  | "commit"
+  | "push";
 
 export type StepStatus = "passed" | "failed" | "skipped";
 
@@ -26,6 +27,7 @@ export type StepFailureReason =
   | "docker-unavailable"
   | "missing-api-key"
   | "schema-read-failed"
+  | "push-failed"
   | "other";
 
 /** The fix agent's five tools (agent-tools.ts); shared here so events don't depend on agent-tools.ts. */

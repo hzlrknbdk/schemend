@@ -359,4 +359,37 @@ describe("createPlainRenderer", () => {
       "$1.00 of $1.00 budget used (stopped: budget exceeded)",
     ]);
   });
+
+  it("prints the PR/MR url once on run-finished, even when every service shares it", () => {
+    const changeRequest = { url: "https://example.com/pr/7", number: 7 };
+    const service: ServiceResult = {
+      service: "checkout-web",
+      language: "typescript",
+      branch: "schemend/update",
+      steps: ["detect"],
+      changedFiles: ["src/lib/shipping.ts"],
+      checks: [],
+      review: [],
+      confidence: "verified-by-tests",
+      costUsd: 0.05,
+      changeRequest,
+    };
+    createPlainRenderer().onEvent({
+      type: "run-finished",
+      timestamp,
+      report: {
+        api: "orders, inventory",
+        startedAt: timestamp,
+        finishedAt: timestamp,
+        changes: [breakingChange],
+        services: [service, { ...service, service: "inventory-service" }],
+        budgetUsd: 1,
+        spentUsd: 0.1,
+      },
+    });
+
+    expect(
+      logLines().filter((line) => line.startsWith("Pull/merge request:")),
+    ).toEqual(["Pull/merge request: https://example.com/pr/7"]);
+  });
 });
