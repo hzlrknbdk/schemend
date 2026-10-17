@@ -7,6 +7,8 @@ export interface PlatformAdapter {
   /** GitHub's practical PR body limit is ~65,536 characters; GitLab's issuable description limit is ~1,048,576 bytes - buildPrBody truncates to this, not a shared constant, since the two aren't the same. */
   maxBodyLength: number;
   detectCi(env: NodeJS.ProcessEnv): boolean;
+  /** Not every repo/project's default branch is "main" - wraps the adapter's own env reading (owner/repo/token or projectId/token) so `schemend run` never has to branch on which platform it's talking to just to find a baseBranch. */
+  getDefaultBranch(): Promise<string>;
   /** `exec` is host-level (never Docker) and already scoped so its commands run against `root`, same convention as git.ts. */
   pushBranch(root: string, branch: string, exec: Exec): Promise<void>;
   openChangeRequest(params: {

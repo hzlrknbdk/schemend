@@ -268,3 +268,18 @@ describe("getDefaultBranch", () => {
     );
   });
 });
+
+describe("githubAdapter.getDefaultBranch", () => {
+  it("reads owner/repo/token from env itself, same result as the free function", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ default_branch: "trunk" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(githubAdapter.getDefaultBranch()).resolves.toBe("trunk");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.github.com/repos/acme/widgets",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+});

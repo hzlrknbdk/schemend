@@ -307,3 +307,18 @@ describe("getDefaultBranch", () => {
     expect(await getDefaultBranch("123", "glpat-test-token")).toBe("trunk");
   });
 });
+
+describe("gitlabAdapter.getDefaultBranch", () => {
+  it("reads projectId/token from env itself, same result as the free function", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ default_branch: "trunk" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(gitlabAdapter.getDefaultBranch()).resolves.toBe("trunk");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://gitlab.com/api/v4/projects/123",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+});

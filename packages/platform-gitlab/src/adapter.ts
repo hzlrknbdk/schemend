@@ -30,7 +30,7 @@ export class MissingChangeRequestNumberError extends Error {
   }
 }
 
-/** Not every project's default branch is "main" - exported for a future `schemend run` caller that needs a baseBranch and has none configured. */
+/** Not every project's default branch is "main". Exported separately (not just via the adapter's own getDefaultBranch()) so a caller with a projectId/token already in hand doesn't have to go through env reading. */
 export async function getDefaultBranch(
   projectId: string,
   token: string,
@@ -74,6 +74,10 @@ export const gitlabAdapter: PlatformAdapter = {
 
   detectCi(env) {
     return env.GITLAB_CI === "true";
+  },
+
+  async getDefaultBranch() {
+    return getDefaultBranch(readGitlabProjectId(), readGitlabToken());
   },
 
   async pushBranch(root, branch, exec) {

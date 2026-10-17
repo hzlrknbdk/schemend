@@ -26,7 +26,7 @@ export class MissingChangeRequestNumberError extends Error {
   }
 }
 
-/** Not every repo's default branch is "main" - exported for a future `schemend run` caller that needs a baseBranch and has none configured. */
+/** Not every repo's default branch is "main". Exported separately (not just via the adapter's own getDefaultBranch()) so a caller with an owner/repo/token already in hand doesn't have to go through env reading. */
 export async function getDefaultBranch(
   owner: string,
   repo: string,
@@ -70,6 +70,11 @@ export const githubAdapter: PlatformAdapter = {
 
   detectCi(env) {
     return env.GITHUB_ACTIONS === "true";
+  },
+
+  async getDefaultBranch() {
+    const { owner, repo } = readGithubRepository();
+    return getDefaultBranch(owner, repo, readGithubToken());
   },
 
   async pushBranch(root, branch, exec) {
