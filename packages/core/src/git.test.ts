@@ -1,10 +1,15 @@
 import { exec as execCallback } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Exec, ExecResult } from "./context.js";
-import { GitRefNotFoundError, writeFileAtRef } from "./git.js";
+import {
+  findRepoRoot,
+  GitRefNotFoundError,
+  NotAGitRepositoryError,
+  writeFileAtRef,
+} from "./git.js";
 
 const tempDirs: string[] = [];
 
@@ -24,6 +29,29 @@ function execIn(cwd: string): Exec {
   return (command) =>
     new Promise<ExecResult>((resolve) => {
       execCallback(command, { cwd }, (error, stdout, stderr) => {
+        resolve({
+          exitCode: !error
+            ? 0
+            : typeof error.code === "number"
+              ? error.code
+              : 1,
+          stdout,
+          stderr,
+        });
+      });
+    });
+}
+
+/**
+ * Runs with the test process's own cwd, never `root` - used to prove findRepoRoot/writeFileAtRef
+ * work from an explicit `git -C <root>` in the command string itself, not because the exec they're
+ * given happens to already be scoped to `root` (the bug class the 2026-10-17 git-exec convention
+ * unification closes, see DECISIONS.md).
+ */
+function execUnscoped(): Exec {
+  return (command) =>
+    new Promise<ExecResult>((resolve) => {
+      execCallback(command, {}, (error, stdout, stderr) => {
         resolve({
           exitCode: !error
             ? 0
@@ -61,13 +89,13 @@ describe("writeFileAtRef", () => {
     const { root, firstRef } = await createRepoWithTwoCommits();
     const exec = execIn(root);
 
-    const tempFile = await writeFileAtRef(firstRef, "schema.json", exec);
+    const tempFile = await writeFileAtRef(root, firstRef, "schema.json", exec);
 
     expect(await readFile(tempFile, "utf-8")).toBe("old");
     await rm(path.dirname(tempFile), { recursive: true, force: true });
   });
 
-  it("works for a file in a subdirectory, relative to the exec's own cwd", async () => {
+  it("works for a file in a subdirectory, relative to root", async () => {
     const root = await tempDir();
     const exec = execIn(root);
     await exec("git init -q");
@@ -78,7 +106,7 @@ describe("writeFileAtRef", () => {
     const ref = (await exec("git rev-parse HEAD")).stdout.trim();
     await writeFile(path.join(root, "src/schema.json"), "new");
 
-    const tempFile = await writeFileAtRef(ref, "src/schema.json", exec);
+    const tempFile = await writeFileAtRef(root, ref, "src/schema.json", exec);
 
     expect(await readFile(tempFile, "utf-8")).toBe("old");
     await rm(path.dirname(tempFile), { recursive: true, force: true });
@@ -88,8 +116,38 @@ describe("writeFileAtRef", () => {
     const { root, firstRef } = await createRepoWithTwoCommits();
     const exec = execIn(root);
 
-    await expect(writeFileAtRef(firstRef, "nope.json", exec)).rejects.toThrow(
-      GitRefNotFoundError,
+    await expect(
+      writeFileAtRef(root, firstRef, "nope.json", exec),
+    ).rejects.toThrow(GitRefNotFoundError);
+  });
+
+  it("still resolves the right repo when exec's own cwd is not root (explicit -C root)", async () => {
+    const { root, firstRef } = await createRepoWithTwoCommits();
+    const exec = execUnscoped();
+
+    const tempFile = await writeFileAtRef(root, firstRef, "schema.json", exec);
+
+    expect(await readFile(tempFile, "utf-8")).toBe("old");
+    await rm(path.dirname(tempFile), { recursive: true, force: true });
+  });
+});
+
+describe("findRepoRoot", () => {
+  it("returns root, scoped via explicit -C even when exec's own cwd is not root", async () => {
+    const { root } = await createRepoWithTwoCommits();
+    const exec = execUnscoped();
+
+    // git itself resolves symlinks (macOS's real tmpdir is /private/var/...), so compare against
+    // root's own realpath rather than the mkdtemp-returned path.
+    await expect(findRepoRoot(root, exec)).resolves.toBe(await realpath(root));
+  });
+
+  it("throws NotAGitRepositoryError when startDir is not inside a git repository", async () => {
+    const dir = await tempDir();
+    const exec = execUnscoped();
+
+    await expect(findRepoRoot(dir, exec)).rejects.toThrow(
+      NotAGitRepositoryError,
     );
   });
 });

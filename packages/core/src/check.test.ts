@@ -75,13 +75,14 @@ function makeAdapter(
   };
 }
 
-function fakeExec(changedFilesByCall: string[][]): Exec {
+function fakeExec(changedFilesByCall: string[][], calls: string[] = []): Exec {
   let diffCall = 0;
   return async (command: string): Promise<ExecResult> => {
-    if (command.startsWith("git show")) {
+    calls.push(command);
+    if (command.includes(" show ")) {
       return { exitCode: 0, stdout: "old schema", stderr: "" };
     }
-    if (command.startsWith("git diff --name-only --cached --relative")) {
+    if (command.includes(" diff --name-only --cached --relative")) {
       const files = changedFilesByCall[diffCall] ?? [];
       diffCall += 1;
       return { exitCode: 0, stdout: files.join("\n"), stderr: "" };
@@ -198,11 +199,12 @@ describe("runCheck", () => {
       regenerateClient,
       findAffected: async () => [],
     });
+    const calls: string[] = [];
 
     const report = await runCheck({
       config: baseConfig(),
       root,
-      exec: fakeExec([["generated.ts"]]),
+      exec: fakeExec([["generated.ts"]], calls),
       adapters: [adapter],
     });
 
@@ -212,6 +214,16 @@ describe("runCheck", () => {
     expect(report.services[0]?.branch).toBe("schemend/update");
     expect(report.services[0]?.confidence).toBe("verified-by-tests");
     expect(report.services[0]?.costUsd).toBe(0);
+
+    // 2026-10-17 git-exec convention: every git call is scoped via an explicit `-C <root>` in
+    // the command string itself, never by relying on exec's own cwd already being root (the
+    // mismatch between check.ts/git.ts and pushBranch's convention that caused the GitHub smoke
+    // test's getRemoteBranchSha bug, see DECISIONS.md).
+    const gitCalls = calls.filter((command) => command.startsWith("git "));
+    expect(gitCalls.length).toBeGreaterThan(0);
+    for (const command of gitCalls) {
+      expect(command).toMatch(new RegExp(`^git -C ${root} `));
+    }
   });
 
   it("runs the fix agent when there are affected locations and reports its result", async () => {

@@ -74,9 +74,11 @@ function confidenceFrom(build: CheckResult, test: CheckResult): Confidence {
 }
 
 async function ensureBranch(ctx: AdapterContext): Promise<void> {
-  const created = await ctx.exec(`git checkout -b ${BRANCH_NAME}`);
+  const created = await ctx.exec(
+    `git -C ${ctx.root} checkout -b ${BRANCH_NAME}`,
+  );
   if (created.exitCode !== 0) {
-    await ctx.exec(`git checkout ${BRANCH_NAME}`);
+    await ctx.exec(`git -C ${ctx.root} checkout ${BRANCH_NAME}`);
   }
 }
 
@@ -175,20 +177,22 @@ export async function ensureDockerCtx(
   };
 }
 
-/** Stages and commits everything under ctx.root, if anything changed. `--relative` keeps paths relative to ctx.root even when it's a subdirectory of the repo, same as findAffected/discoverApis. */
+/** Stages and commits everything under ctx.root, if anything changed. Explicit `-C ctx.root` on every call (never relies on exec's own cwd) - `--relative` then keeps paths relative to ctx.root even when it's a subdirectory of the repo, same as findAffected/discoverApis. */
 async function commitAll(
   ctx: AdapterContext,
   message: string,
 ): Promise<string[]> {
-  await ctx.exec("git add -A .");
-  const staged = await ctx.exec("git diff --name-only --cached --relative");
+  await ctx.exec(`git -C ${ctx.root} add -A .`);
+  const staged = await ctx.exec(
+    `git -C ${ctx.root} diff --name-only --cached --relative`,
+  );
   const changedFiles = staged.stdout
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
   if (changedFiles.length === 0) return [];
 
-  const commit = await ctx.exec(`git commit -q -m "${message}"`);
+  const commit = await ctx.exec(`git -C ${ctx.root} commit -q -m "${message}"`);
   return commit.exitCode === 0 ? changedFiles : [];
 }
 
@@ -233,7 +237,12 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
 
     let oldSchemaFile: string;
     try {
-      oldSchemaFile = await writeFileAtRef(baseRef, apiConfig.schema, exec);
+      oldSchemaFile = await writeFileAtRef(
+        root,
+        baseRef,
+        apiConfig.schema,
+        exec,
+      );
     } catch (error) {
       emit({
         type: "step-finished",
@@ -324,7 +333,7 @@ export async function runCheck(options: RunCheckOptions): Promise<RunReport> {
     let dockerCtx: AdapterContext;
     try {
       if (!dockerCtxCache) {
-        const repoRoot = await findRepoRoot(exec);
+        const repoRoot = await findRepoRoot(root, exec);
         ({ ctx: dockerCtxCache } = await ensureDockerCtx(
           adapter,
           root,
